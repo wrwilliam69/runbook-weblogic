@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<!-- saved from url=(0061)file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html# -->
+<html lang="es"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runbook — WebLogic en EC2 | Manual Técnico</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg:         #1e1f26;
+    --surface:    #252631;
+    --surface2:   #2e3040;
+    --border:     #3a3d52;
+    --accent:     #7c8cff;
+    --accent2:    #52e5a0;
+    --warn:       #ff6b6b;
+    --warn2:      #ffb347;
+    --text:       #e2e4f0;
+    --text-dim:   #8890b0;
+    --code-bg:    #181922;
+    --tab-active: #7c8cff;
+    --note-bg:    #2a2b3d;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TOP BAR (OneNote ribbon feel) ── */
+  .ribbon {
+    background: #14151c;
+    border-bottom: 2px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 52px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .ribbon-logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .ribbon-sep { width: 1px; height: 28px; background: var(--border); }
+  .ribbon-title {
+    font-size: 13px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ribbon-badge {
+    margin-left: auto;
+    background: var(--accent);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── LAYOUT ── */
+  .layout {
+    display: flex;
+    flex: 1;
+    min-height: calc(100vh - 52px);
+  }
+
+  /* ── SIDEBAR (OneNote notebook panel) ── */
+  .sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: #14151c;
+    border-right: 1px solid var(--border);
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    position: sticky;
+    top: 52px;
+    height: calc(100vh - 52px);
+    overflow-y: auto;
+  }
+  .sidebar-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    padding: 0 20px 8px;
+    text-transform: uppercase;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 20px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text-dim);
+    border-left: 3px solid transparent;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .nav-item:hover { background: var(--surface); color: var(--text); }
+  .nav-item.active {
+    background: var(--note-bg);
+    color: var(--accent);
+    border-left-color: var(--accent);
+    font-weight: 600;
+  }
+  .nav-item .icon { font-size: 15px; }
+  .nav-divider { height: 1px; background: var(--border); margin: 10px 20px; }
+
+  /* ── SEARCH BAR ── */
+  .search-wrap { padding: 0 16px 14px; }
+  .search-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 12px;
+    color: var(--text);
+    font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text-dim); }
+
+  /* ── MAIN CONTENT ── */
+  .content {
+    flex: 1;
+    padding: 32px 40px 60px;
+    max-width: 900px;
+    overflow-y: auto;
+  }
+
+  /* page sections */
+  .page { display: none; }
+  .page.visible { display: block; }
+
+  /* ── PAGE HEADER ── */
+  .page-header {
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 18px;
+    margin-bottom: 28px;
+  }
+  .page-tag {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .page-meta {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex;
+    gap: 16px;
+  }
+  .page-meta span { display: flex; align-items: center; gap: 4px; }
+
+  /* ── SECTION ── */
+  .section {
+    margin-bottom: 36px;
+  }
+  .section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title .step-num {
+    background: var(--accent);
+    color: #fff;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* ── CODE BLOCK ── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: #c9d1e9;
+    overflow-x: auto;
+    position: relative;
+    margin: 10px 0;
+    line-height: 1.6;
+  }
+  pre .comment { color: #5a6080; font-style: italic; }
+  pre .cmd { color: #7c8cff; }
+  pre .arg { color: #52e5a0; }
+  pre .flag { color: #ffb347; }
+  pre .path { color: #ff8fd0; }
+  .code-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+
+  /* ── INLINE CODE ── */
+  code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: #c9d1e9;
+  }
+
+  /* ── INFO / WARN CARDS ── */
+  .card {
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 14px;
+    border-left: 4px solid var(--accent);
+  }
+  .card.warn  { border-left-color: var(--warn); }
+  .card.ok    { border-left-color: var(--accent2); }
+  .card.info  { border-left-color: var(--warn2); }
+  .card-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .card.warn  .card-title { color: var(--warn); }
+  .card.ok    .card-title { color: var(--accent2); }
+  .card.info  .card-title { color: var(--warn2); }
+  .card p, .card li { font-size: 13.5px; line-height: 1.7; color: var(--text); }
+  .card ul { padding-left: 18px; }
+
+  /* ── TABLE ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 2px solid var(--border);
+  }
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+  tr:hover td { background: var(--surface); }
+  .td-cmd { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #7c8cff; }
+  .td-ok  { color: var(--accent2); font-weight: 600; }
+  .td-err { color: var(--warn);  font-weight: 600; }
+
+  /* ── MNEMONIC BOX ── */
+  .mnemonic {
+    background: linear-gradient(135deg, #1e1f3a 0%, #2a1e3a 100%);
+    border: 1px dashed #5a4acc;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 18px 0;
+  }
+  .mnemonic-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #a08cff;
+    margin-bottom: 10px;
+  }
+  .mnemonic p { font-size: 13.5px; color: var(--text); line-height: 1.7; }
+  .mnemonic .key { color: #c9b8ff; font-weight: 700; font-size: 15px; }
+
+  /* ── GLOSARIO ── */
+  .glossary-item {
+    display: flex;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  .glossary-item:last-child { border-bottom: none; }
+  .glossary-term {
+    min-width: 140px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent2);
+    font-weight: 600;
+  }
+  .glossary-def { color: var(--text); }
+
+  /* ── TIMELINE ── */
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+  .tl-item {
+    display: flex;
+    gap: 16px;
+    position: relative;
+  }
+  .tl-item::before {
+    content: '';
+    position: absolute;
+    left: 19px;
+    top: 36px;
+    bottom: -10px;
+    width: 2px;
+    background: var(--border);
+  }
+  .tl-item:last-child::before { display: none; }
+  .tl-dot {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+  .tl-content {
+    flex: 1;
+    padding: 6px 0 24px;
+  }
+  .tl-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .tl-sub { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── SEARCH HIGHLIGHT ── */
+  mark { background: #ffb34740; color: var(--warn2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ RIBBON ═══════════════════════════════ -->
+<div class="ribbon">
+  <div class="ribbon-logo">⬡ RUNBOOK</div>
+  <div class="ribbon-sep"></div>
+  <div class="ribbon-title">WebLogic 14.1.2 · EC2 RHEL 9 · LVM · Silent Install</div>
+  <div class="ribbon-badge">v1.0 — 40 min</div>
+</div>
+
+<!-- ═══════════════════════════════ LAYOUT ═══════════════════════════════ -->
+<div class="layout">
+
+  <!-- ── SIDEBAR ── -->
+  <nav class="sidebar">
+    <div class="sidebar-label">Secciones</div>
+    <div class="search-wrap">
+      <input class="search-input" id="searchInput" type="text" placeholder="🔍  Buscar en manual…" oninput="searchManual(this.value)">
+    </div>
+
+    <a class="nav-item" onclick="showPage(&#39;overview&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
+      <span class="icon">📋</span> Resumen General
+    </a>
+    <a class="nav-item" onclick="showPage(&#39;infra&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
+      <span class="icon">🖥️</span> 1. EC2 + Discos
+    </a>
+    <a class="nav-item" onclick="showPage(&#39;lvm&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
+      <span class="icon">💾</span> 2. LVM
+    </a>
+    <a class="nav-item" onclick="showPage(&#39;fs&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
+      <span class="icon">📁</span> 3. Filesystem
+    </a>
+    <a class="nav-item" onclick="showPage(&#39;swap&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
+      <span class="icon">🔄</span> 4. Swap
+    </a>
+    <a class="nav-item" onclick="showPage(&#39;install&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
+      <span class="icon">⚙️</span> 5. Instalación WLS
+    </a>
+    <a class="nav-item" onclick="showPage(&#39;errors&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
+      <span class="icon">🔥</span> 6. Errores / Fix
+    </a>
+    <div class="nav-divider"></div>
+    <a class="nav-item" onclick="showPage(&#39;glossary&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
+      <span class="icon">📖</span> Glosario Técnico
+    </a>
+    <a class="nav-item" onclick="showPage(&#39;mnemonic&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
+      <span class="icon">🧠</span> Reglas Mnemotécnicas
+    </a>
+    <a class="nav-item active" onclick="showPage(&#39;timeline&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
+      <span class="icon">⏱️</span> Timeline 40 min
+    </a>
+  </nav>
+
+  <!-- ── CONTENT ── -->
+  <main class="content" id="mainContent">
+
+    <!-- ════════════ PAGE: OVERVIEW ════════════ -->
+    <section class="page" id="page-overview">
+      <div class="page-header">
+        <div class="page-tag">Manual de Infraestructura</div>
+        <div class="page-title">Runbook — WebLogic en EC2 (40 min)</div>
+        <div class="page-meta">
+          <span>🖥️ Red Hat 9</span>
+          <span>☁️ Amazon EC2</span>
+          <span>☕ JDK 17</span>
+          <span>🗄️ WebLogic 14.1.2</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="card info">
+          <div class="card-title">🎯 Objetivo</div>
+          <p>Instalar Oracle WebLogic Server 14.1.2 sobre Amazon EC2 (RHEL 9) usando LVM para gestionar el almacenamiento y modo <strong>silent install</strong> para evitar errores de GUI.</p>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Arquitectura del laboratorio</div>
+        <table>
+          <tbody><tr><th>Componente</th><th>Valor</th><th>Para qué sirve</th></tr>
+          <tr>
+            <td>Tipo de instancia</td>
+            <td class="td-cmd">t2.micro</td>
+            <td>CPU y RAM mínima para el instalador</td>
+          </tr>
+          <tr>
+            <td>Sistema operativo</td>
+            <td class="td-cmd">Red Hat 9</td>
+            <td>Certificado por Oracle para WebLogic</td>
+          </tr>
+          <tr>
+            <td>Disco Root</td>
+            <td class="td-cmd">/dev/nvme0n1 — 12 GB</td>
+            <td>SO base</td>
+          </tr>
+          <tr>
+            <td>Disco LAB2</td>
+            <td class="td-cmd">/dev/nvme1n1 — 9 GB</td>
+            <td>Volumen LVM para dominio y logs</td>
+          </tr>
+          <tr>
+            <td>Disco LAB3</td>
+            <td class="td-cmd">/dev/nvme2n1 — 15 GB</td>
+            <td>Volumen LVM para dominio y logs</td>
+          </tr>
+          <tr>
+            <td>JDK</td>
+            <td class="td-cmd">JDK 17 (Oracle)</td>
+            <td>WebLogic 14.x exige Oracle JDK (no OpenJDK)</td>
+          </tr>
+          <tr>
+            <td>WebLogic</td>
+            <td class="td-cmd">fmw_14.1.2.0.0_wls.jar</td>
+            <td>Servidor de aplicaciones Java EE</td>
+          </tr>
+        </tbody></table>
+
+        <div class="card ok">
+          <div class="card-title">✅ Resultado esperado</div>
+          <p>Al final del proceso verás el mensaje:<br><code>installation completed successfully</code></p>
+        </div>
+      </div>
+    </section><!-- /overview -->
+
+
+    <!-- ════════════ PAGE: INFRA ════════════ -->
+    <section class="page" id="page-infra">
+      <div class="page-header">
+        <div class="page-tag">Paso 1</div>
+        <div class="page-title">EC2 — Crear instancia y User Data</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">
+          <span class="step-num">1</span> Configuración de la instancia EC2
+        </div>
+        <table>
+          <tbody><tr><th>Campo</th><th>Valor</th></tr>
+          <tr><td>Tipo</td><td class="td-cmd">t2.micro</td></tr>
+          <tr><td>Sistema</td><td class="td-cmd">Red Hat Enterprise Linux 9</td></tr>
+          <tr><td>Root disk</td><td class="td-cmd">12 GB (gp3)</td></tr>
+          <tr><td>Disco adicional 1 (LAB2)</td><td class="td-cmd">9 GB</td></tr>
+          <tr><td>Disco adicional 2 (LAB3)</td><td class="td-cmd">15 GB</td></tr>
+          <tr><td>Security Group</td><td class="td-cmd">Solo SSH (puerto 22)</td></tr>
+        </tbody></table>
+
+        <div class="card warn">
+          <div class="card-title">⚠️ Importante — Security Group</div>
+          <p>Abrir <strong>solo puerto 22 (SSH)</strong> durante la instalación. No expongas consola de administración (7001, 7002) hasta terminar la instalación.</p>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">
+          <span class="step-num">2</span> Script User Data (arranque automático)
+        </div>
+
+        <div class="card info">
+          <div class="card-title">ℹ️ ¿Qué es User Data?</div>
+          <p>Es un script que EC2 ejecuta <strong>una sola vez</strong> al crear la instancia. Evita instalar herramientas manualmente después de conectarte.</p>
+        </div>
+
+        <div class="code-label">user-data.sh</div>
+        <pre><span class="comment">#!/bin/bash</span>
+<span class="comment"># Actualizar todos los paquetes del sistema</span>
+<span class="cmd">dnf</span> <span class="flag">update -y</span>
+
+<span class="comment"># Instalar herramientas necesarias:</span>
+<span class="comment">#   lvm2    → gestión de volúmenes lógicos (LVM)</span>
+<span class="comment">#   sysstat → iostat, sar para monitoreo de disco/CPU</span>
+<span class="comment">#   lsof    → ver qué procesos tienen archivos abiertos</span>
+<span class="comment">#   unzip   → descomprimir archivos ZIP</span>
+<span class="cmd">dnf</span> <span class="flag">install -y</span> <span class="arg">lvm2 sysstat lsof unzip</span></pre>
+      </div>
+    </section><!-- /infra -->
+
+
+    <!-- ════════════ PAGE: LVM ════════════ -->
+    <section class="page" id="page-lvm">
+      <div class="page-header">
+        <div class="page-tag">Paso 2</div>
+        <div class="page-title">LVM — Volúmenes Lógicos</div>
+      </div>
+
+      <div class="section">
+        <div class="card info">
+          <div class="card-title">ℹ️ ¿Qué es LVM?</div>
+          <p><strong>LVM (Logical Volume Manager)</strong> — gestor de volúmenes lógicos del kernel Linux. Permite combinar múltiples discos físicos en un solo espacio flexible y redimensionable sin reiniciar.</p>
+          <ul>
+            <li><strong>PV (Physical Volume)</strong> = disco físico preparado para LVM</li>
+            <li><strong>VG (Volume Group)</strong> = agrupación de uno o más PV</li>
+            <li><strong>LV (Logical Volume)</strong> = partición virtual sobre el VG, donde montas el filesystem</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="step-num">1</span> Ver discos disponibles</div>
+        <div class="code-label">Terminal</div>
+        <pre><span class="comment"># Listar bloques de disco (árbol visual de discos y particiones)</span>
+<span class="cmd">lsblk</span></pre>
+        <div class="card ok">
+          <div class="card-title">✅ Salida esperada</div>
+          <p>Verás <code>nvme0n1</code> (root), <code>nvme1n1</code> (LAB2) y <code>nvme2n1</code> (LAB3) sin montar.</p>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="step-num">2</span> Crear Physical Volumes</div>
+        <pre><span class="comment"># pvcreate marca discos para que LVM los reconozca</span>
+<span class="cmd">pvcreate</span> <span class="path">/dev/nvme1n1</span> <span class="path">/dev/nvme2n1</span></pre>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="step-num">3</span> Crear Volume Group</div>
+        <pre><span class="comment"># vgcreate nombre_vg disco1 disco2</span>
+<span class="comment"># Une nvme1n1 (9GB) + nvme2n1 (15GB) = 24GB usables</span>
+<span class="cmd">vgcreate</span> <span class="arg">vg_weblogic</span> <span class="path">/dev/nvme1n1</span> <span class="path">/dev/nvme2n1</span></pre>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="step-num">4</span> Crear Logical Volumes</div>
+        <pre><span class="comment"># lv_domain: donde vive el dominio WebLogic (middleware)</span>
+<span class="cmd">lvcreate</span> <span class="flag">-n</span> <span class="arg">lv_domain</span> <span class="flag">-L 12G</span> <span class="arg">vg_weblogic</span>
+
+<span class="comment"># lv_log: donde se guardarán los logs de la aplicación</span>
+<span class="cmd">lvcreate</span> <span class="flag">-n</span> <span class="arg">lv_log</span> <span class="flag">-L 8G</span> <span class="arg">vg_weblogic</span></pre>
+
+        <div class="card info">
+          <div class="card-title">ℹ️ Flags explicados sin símbolos matemáticos</div>
+          <ul>
+            <li><code>-n nombre</code> → asigna un nombre al volumen lógico</li>
+            <li><code>-L 12G</code> → tamaño exacto: <em>L mayúscula igual a 12 gigabytes</em></li>
+          </ul>
+        </div>
+      </div>
+    </section><!-- /lvm -->
+
+
+    <!-- ════════════ PAGE: FS ════════════ -->
+    <section class="page" id="page-fs">
+      <div class="page-header">
+        <div class="page-tag">Paso 3</div>
+        <div class="page-title">Filesystem — Formato, Montaje y Persistencia</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="step-num">1</span> Formatear con XFS</div>
+        <div class="card info">
+          <div class="card-title">ℹ️ ¿Qué es XFS?</div>
+          <p>Sistema de archivos de alto rendimiento recomendado en RHEL. Soporta archivos grandes y tiene buen rendimiento de I/O para bases de datos y middleware.</p>
+        </div>
+        <pre><span class="comment"># mkfs.xfs = "make filesystem de tipo XFS"</span>
+<span class="cmd">mkfs.xfs</span> <span class="path">/dev/vg_weblogic/lv_domain</span>
+<span class="cmd">mkfs.xfs</span> <span class="path">/dev/vg_weblogic/lv_log</span></pre>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="step-num">2</span> Crear directorios de montaje</div>
+        <pre><span class="comment"># /u01: convención Oracle para instalaciones (Unidad 01)</span>
+<span class="cmd">mkdir</span> <span class="path">/u01</span>
+
+<span class="comment"># /logs: centraliza todos los logs del servidor</span>
+<span class="cmd">mkdir</span> <span class="path">/logs</span></pre>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="step-num">3</span> Montar los volúmenes</div>
+        <pre><span class="cmd">mount</span> <span class="path">/dev/vg_weblogic/lv_domain</span> <span class="path">/u01</span>
+<span class="cmd">mount</span> <span class="path">/dev/vg_weblogic/lv_log</span>    <span class="path">/logs</span></pre>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="step-num">4</span> Persistencia con /etc/fstab</div>
+        <div class="card warn">
+          <div class="card-title">⚠️ Por qué necesitas fstab</div>
+          <p>Sin esta configuración, al reiniciar la instancia los volúmenes quedan <strong>sin montar</strong> y WebLogic no arranca. <code>fstab</code> monta discos automáticamente al boot.</p>
+        </div>
+
+        <pre><span class="comment"># Obtener UUID de los volúmenes (identificador único del filesystem)</span>
+<span class="cmd">blkid</span> <span class="flag">|</span> grep <span class="arg">vg_weblogic</span></pre>
+
+        <pre><span class="comment"># Editar fstab con vi</span>
+<span class="cmd">vi</span> <span class="path">/etc/fstab</span>
+
+<span class="comment"># Agregar al final del archivo (sustituir xxxxx por UUID real):</span>
+<span class="comment"># FORMATO: UUID=id  punto_de_montaje  tipo  opciones  dump  pass</span>
+UUID=xxxxx  <span class="path">/u01</span>   xfs  defaults  0  0
+UUID=xxxxx  <span class="path">/logs</span>  xfs  defaults  0  0</pre>
+
+        <div class="card info">
+          <div class="card-title">ℹ️ Columnas de fstab</div>
+          <ul>
+            <li><strong>UUID</strong> = identificador del volumen (más estable que /dev/sdX)</li>
+            <li><strong>punto de montaje</strong> = directorio donde aparecerá el disco</li>
+            <li><strong>xfs</strong> = tipo de filesystem</li>
+            <li><strong>defaults</strong> = opciones estándar (lectura/escritura, no-exec para swap)</li>
+            <li><strong>0 0</strong> = sin backup automático, sin verificación fsck al boot</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="step-num">5</span> Crear estructura Oracle</div>
+        <pre><span class="comment"># -p = crea todos los directorios intermedios que falten</span>
+<span class="cmd">mkdir</span> <span class="flag">-p</span> <span class="path">/u01/app/oracle</span>
+<span class="cmd">mkdir</span> <span class="flag">-p</span> <span class="path">/u01/domains</span></pre>
+      </div>
+    </section><!-- /fs -->
+
+
+    <!-- ════════════ PAGE: SWAP ════════════ -->
+    <section class="page" id="page-swap">
+      <div class="page-header">
+        <div class="page-tag">Paso 4</div>
+        <div class="page-title">Swap — Memoria Virtual para WebLogic</div>
+      </div>
+
+      <div class="section">
+        <div class="card warn">
+          <div class="card-title">⚠️ Error frecuente sin swap</div>
+          <p>El instalador de WebLogic <strong>verifica que exista swap mayor a 512 MB</strong> antes de continuar. Si no hay swap, lanza el error:<br>
+          <code>swap must be greater than 512MB</code></p>
+        </div>
+
+        <div class="card info">
+          <div class="card-title">ℹ️ ¿Qué es Swap?</div>
+          <p>Espacio en disco que el SO usa como <em>extensión de la RAM</em> cuando la memoria física se llena. En producción se configura en un disco SSD dedicado; en laboratorio usamos un archivo swap (swapfile).</p>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="step-num">1</span> Crear y activar swapfile de 1 GB</div>
+        <pre><span class="comment"># fallocate reserva 1 gigabyte de espacio contiguo en disco</span>
+<span class="comment"># -l 1G = longitud igual a 1 gigabyte</span>
+<span class="cmd">sudo fallocate</span> <span class="flag">-l 1G</span> <span class="path">/swapfile</span>
+
+<span class="comment"># Permisos 600 = solo root puede leer/escribir (obligatorio para swap)</span>
+<span class="comment"># chmod 600 = modo: solo propietario tiene lectura y escritura</span>
+<span class="cmd">sudo chmod 600</span> <span class="path">/swapfile</span>
+
+<span class="comment"># Formatear el archivo como área de swap</span>
+<span class="cmd">sudo mkswap</span> <span class="path">/swapfile</span>
+
+<span class="comment"># Activar el swap inmediatamente</span>
+<span class="cmd">sudo swapon</span> <span class="path">/swapfile</span>
+
+<span class="comment"># Verificar que aparece el swap activo</span>
+<span class="cmd">free</span> <span class="flag">-h</span></pre>
+
+        <div class="card ok">
+          <div class="card-title">✅ Salida esperada de free -h</div>
+          <p>Verás una fila <strong>Swap</strong> con total cercano a <code>1.0G</code> y usado en <code>0B</code> (sin usar aún).</p>
+        </div>
+      </div>
+    </section><!-- /swap -->
+
+
+    <!-- ════════════ PAGE: INSTALL ════════════ -->
+    <section class="page" id="page-install">
+      <div class="page-header">
+        <div class="page-tag">Paso 5</div>
+        <div class="page-title">Instalación WebLogic — Silent Mode</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="step-num">1</span> Subir instaladores vía SFTP (Termius)</div>
+        <table>
+          <tbody><tr><th>Archivo</th><th>Descripción</th><th>Destino en servidor</th></tr>
+          <tr>
+            <td class="td-cmd">fmw_14.1.2.0.0_wls.jar</td>
+            <td>Instalador WebLogic</td>
+            <td class="td-cmd">/u01/</td>
+          </tr>
+          <tr>
+            <td class="td-cmd">jdk-17_linux-x64_bin.tar.gz</td>
+            <td>Oracle JDK 17</td>
+            <td class="td-cmd">/u01/</td>
+          </tr>
+        </tbody></table>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="step-num">2</span> Instalar JDK 17</div>
+        <pre><span class="comment"># tar = herramienta de archivos comprimidos</span>
+<span class="comment"># -x = extraer, -z = descomprimir gzip, -f = nombre de archivo</span>
+<span class="cmd">tar</span> <span class="flag">-xzf</span> <span class="path">/u01/jdk-17_linux-x64_bin.tar.gz</span></pre>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="step-num">3</span> Crear Response File</div>
+        <div class="card info">
+          <div class="card-title">ℹ️ ¿Qué es un Response File?</div>
+          <p>Archivo de texto que responde <em>automáticamente</em> todas las preguntas del instalador gráfico. Permite instalar en modo <strong>silent</strong> sin GUI, ideal para servidores sin escritorio.</p>
+        </div>
+        <pre><span class="comment"># cat &gt; archivo crea el archivo con el contenido entre EOF...EOF</span>
+<span class="cmd">cat</span> <span class="arg">&gt; /u01/wls.rsp &lt;&lt; 'EOF'</span>
+[ENGINE]
+Response File Version=1.0.0.0
+
+[GENERIC]
+<span class="comment"># Ruta donde se instalará WebLogic (ORACLE_HOME)</span>
+ORACLE_HOME=/u01/app/oracle/middleware
+INSTALL_TYPE=WebLogic Server
+<span class="comment"># No enviar info de seguridad a Oracle durante instalación</span>
+DECLINE_SECURITY_UPDATES=true
+EOF</pre>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="step-num">4</span> Crear Oracle Inventory</div>
+        <div class="card warn">
+          <div class="card-title">⚠️ Primera instalación Oracle en el servidor</div>
+          <p>Oracle necesita un directorio de inventario central para registrar todos sus productos instalados. Sin esto el instalador falla con error de permisos.</p>
+        </div>
+        <pre><span class="cmd">sudo</span> <span class="path">/tmp/createCentralInventory*.sh</span> <span class="arg">/u01/app/oraInventory ec2-user</span></pre>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="step-num">5</span> Resolver error de espacio en /tmp</div>
+        <div class="card warn">
+          <div class="card-title">⚠️ /tmp demasiado pequeño</div>
+          <p>WebLogic extrae archivos temporales en <code>/tmp</code>. En t2.micro el espacio es insuficiente. La solución es redirigir TMPDIR a <code>/u01</code> que tiene más espacio.</p>
+        </div>
+        <pre><span class="comment"># export = crea/modifica variable de entorno para la sesión actual</span>
+<span class="comment"># TMPDIR = le dice a WebLogic dónde guardar sus temporales</span>
+<span class="cmd">export</span> <span class="arg">TMPDIR=/u01</span></pre>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="step-num">6</span> Ejecutar instalación Silent</div>
+        <pre><span class="comment"># Usar el JDK 17 recién extraído (no el sistema)</span>
+<span class="comment"># -jar = ejecutar un archivo JAR como programa</span>
+<span class="comment"># -silent = sin interfaz gráfica</span>
+<span class="comment"># -responseFile = usar nuestro archivo de respuestas</span>
+<span class="comment"># -invPtrLoc = ubicación del inventory Oracle</span>
+<span class="path">/u01/jdk-17*/bin/java</span> <span class="flag">-jar</span> <span class="path">/u01/fmw_14.1.2.0.0_wls.jar</span> \
+  <span class="flag">-silent</span> \
+  <span class="flag">-responseFile</span> <span class="path">/u01/wls.rsp</span> \
+  <span class="flag">-invPtrLoc</span> <span class="path">/etc/oraInst.loc</span></pre>
+
+        <div class="card ok">
+          <div class="card-title">✅ Resultado esperado</div>
+          <p><code>installation completed successfully</code></p>
+        </div>
+      </div>
+    </section><!-- /install -->
+
+
+    <!-- ════════════ PAGE: ERRORS ════════════ -->
+    <section class="page" id="page-errors">
+      <div class="page-header">
+        <div class="page-tag">Troubleshooting</div>
+        <div class="page-title">Errores Comunes y Soluciones</div>
+      </div>
+
+      <div class="section">
+        <table>
+          <tbody><tr>
+            <th style="width:38%">ERROR</th>
+            <th style="width:10%">Estado</th>
+            <th>Causa</th>
+            <th>Solución</th>
+          </tr>
+          <tr>
+            <td class="td-cmd">OpenJDK JVM not supported</td>
+            <td class="td-err">FALLO</td>
+            <td>WebLogic requiere Oracle JDK oficial; OpenJDK (el default de RHEL) no está certificado</td>
+            <td>Descargar e instalar <strong>Oracle JDK 17</strong> manualmente</td>
+          </tr>
+          <tr>
+            <td class="td-cmd">swap must be greater than 512MB</td>
+            <td class="td-err">FALLO</td>
+            <td>La instancia t2.micro no tiene swap por defecto</td>
+            <td>Crear swapfile de 1G con <code>fallocate + mkswap + swapon</code></td>
+          </tr>
+          <tr>
+            <td class="td-cmd">DISPLAY not set</td>
+            <td class="td-err">FALLO</td>
+            <td>El instalador intenta abrir GUI pero no hay servidor X11</td>
+            <td>Usar flag <code>-mode=console</code> o <code>-silent</code></td>
+          </tr>
+          <tr>
+            <td class="td-cmd">Insufficient space in /tmp</td>
+            <td class="td-err">FALLO</td>
+            <td>El instalador extrae archivos en /tmp que está lleno</td>
+            <td>Ejecutar <code>export TMPDIR=/u01</code> antes del instalador</td>
+          </tr>
+          <tr>
+            <td class="td-cmd">User does not have permission to create home</td>
+            <td class="td-err">FALLO</td>
+            <td>Oracle Inventory no fue creado; el instalador no puede registrar el producto</td>
+            <td>Ejecutar <code>createCentralInventory.sh</code> como paso previo</td>
+          </tr>
+        </tbody></table>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Checklist pre-instalación</div>
+        <table>
+          <tbody><tr><th>Verificación</th><th>Comando</th><th>Esperado</th></tr>
+          <tr>
+            <td>Swap activo</td>
+            <td class="td-cmd">free -h</td>
+            <td>Fila Swap mayor a 512M</td>
+          </tr>
+          <tr>
+            <td>Espacio en /u01</td>
+            <td class="td-cmd">df -h /u01</td>
+            <td>Más de 8 GB disponibles</td>
+          </tr>
+          <tr>
+            <td>JDK Oracle instalado</td>
+            <td class="td-cmd">/u01/jdk-17*/bin/java -version</td>
+            <td>Muestra Oracle JDK 17</td>
+          </tr>
+          <tr>
+            <td>TMPDIR configurado</td>
+            <td class="td-cmd">echo $TMPDIR</td>
+            <td>/u01</td>
+          </tr>
+          <tr>
+            <td>Inventory creado</td>
+            <td class="td-cmd">ls /u01/app/oraInventory</td>
+            <td>Directorio existe</td>
+          </tr>
+          <tr>
+            <td>Response file listo</td>
+            <td class="td-cmd">cat /u01/wls.rsp</td>
+            <td>Contiene ORACLE_HOME y INSTALL_TYPE</td>
+          </tr>
+        </tbody></table>
+      </div>
+    </section><!-- /errors -->
+
+
+    <!-- ════════════ PAGE: GLOSSARY ════════════ -->
+    <section class="page" id="page-glossary">
+      <div class="page-header">
+        <div class="page-tag">Referencia</div>
+        <div class="page-title">Glosario Técnico</div>
+      </div>
+      <div class="section">
+        <div class="glossary-item">
+          <div class="glossary-term">LVM</div>
+          <div class="glossary-def"><strong>Logical Volume Manager</strong> — Capa de abstracción entre discos físicos y el sistema de archivos. Permite crear, redimensionar y mover volúmenes sin desmontar discos ni reiniciar.</div>
+        </div>
+        <div class="glossary-item">
+          <div class="glossary-term">PV</div>
+          <div class="glossary-def"><strong>Physical Volume</strong> — Un disco o partición inicializada para LVM. Analogía: ladrillo crudo.</div>
+        </div>
+        <div class="glossary-item">
+          <div class="glossary-term">VG</div>
+          <div class="glossary-def"><strong>Volume Group</strong> — Agrupación de uno o más PVs. Analogía: pared construida con los ladrillos PV.</div>
+        </div>
+        <div class="glossary-item">
+          <div class="glossary-term">LV</div>
+          <div class="glossary-def"><strong>Logical Volume</strong> — Partición virtual creada desde el VG. Analogía: habitación dentro de la pared.</div>
+        </div>
+        <div class="glossary-item">
+          <div class="glossary-term">XFS</div>
+          <div class="glossary-def">Sistema de archivos de alto rendimiento para cargas de trabajo intensivas. Predeterminado en RHEL desde versión 7. Soporta archivos de hasta 8 exabytes.</div>
+        </div>
+        <div class="glossary-item">
+          <div class="glossary-term">Swap</div>
+          <div class="glossary-def">Espacio en disco usado como extensión de RAM. El kernel mueve páginas de memoria inactivas al swap para liberar RAM física.</div>
+        </div>
+        <div class="glossary-item">
+          <div class="glossary-term">fstab</div>
+          <div class="glossary-def"><strong>/etc/fstab</strong> — Tabla de sistemas de archivos. Define qué discos se montan automáticamente al iniciar el sistema operativo.</div>
+        </div>
+        <div class="glossary-item">
+          <div class="glossary-term">UUID</div>
+          <div class="glossary-def"><strong>Universally Unique Identifier</strong> — Identificador único asignado a cada filesystem al formatearlo. Más confiable que /dev/sdX porque no cambia al reiniciar.</div>
+        </div>
+        <div class="glossary-item">
+          <div class="glossary-term">Silent Install</div>
+          <div class="glossary-def">Modo de instalación sin interfaz gráfica, dirigido por un archivo de respuestas (.rsp). Fundamental en servidores sin entorno de escritorio.</div>
+        </div>
+        <div class="glossary-item">
+          <div class="glossary-term">ORACLE_HOME</div>
+          <div class="glossary-def">Variable de entorno y directorio donde se instala el software Oracle (WebLogic, DB, etc.). Por convención suele ser <code>/u01/app/oracle/middleware</code>.</div>
+        </div>
+        <div class="glossary-item">
+          <div class="glossary-term">User Data (EC2)</div>
+          <div class="glossary-def">Script que Amazon EC2 ejecuta automáticamente durante el primer arranque de la instancia. Sirve para instalar software o configurar el SO sin intervención manual.</div>
+        </div>
+        <div class="glossary-item">
+          <div class="glossary-term">TMPDIR</div>
+          <div class="glossary-def">Variable de entorno que le dice a las aplicaciones dónde crear archivos temporales. Por defecto apunta a <code>/tmp</code>; se puede redirigir a un disco con más espacio.</div>
+        </div>
+        <div class="glossary-item">
+          <div class="glossary-term">blkid</div>
+          <div class="glossary-def">Comando que muestra el UUID y tipo de cada dispositivo de bloque (disco/volumen) del sistema. Se usa para configurar fstab.</div>
+        </div>
+        <div class="glossary-item">
+          <div class="glossary-term">fallocate</div>
+          <div class="glossary-def">Reserva espacio en disco de forma instantánea sin escribir ceros. Más rápido que <code>dd</code> para crear swapfiles.</div>
+        </div>
+      </div>
+    </section><!-- /glossary -->
+
+
+    <!-- ════════════ PAGE: MNEMONIC ════════════ -->
+    <section class="page" id="page-mnemonic">
+      <div class="page-header">
+        <div class="page-tag">Memoria Técnica</div>
+        <div class="page-title">Reglas Mnemotécnicas</div>
+      </div>
+
+      <div class="section">
+        <div class="mnemonic">
+          <div class="mnemonic-title">🧠 Orden LVM — "PVerde, VGrande, LVive"</div>
+          <p>
+            <span class="key">P</span>V verde → <code>pvcreate</code> (prepara el disco)<br>
+            <span class="key">V</span>G grande → <code>vgcreate</code> (agrupa los discos)<br>
+            <span class="key">L</span>V vive → <code>lvcreate</code> (crea la partición virtual)
+          </p>
+          <p style="margin-top:8px; color: var(--text-dim); font-size:12px;">Recuerda: Primero Physical, luego Virtual Group, luego Logical.</p>
+        </div>
+
+        <div class="mnemonic">
+          <div class="mnemonic-title">🧠 SWAP — "FALTO CHMOD MKSWAP SWAPON"</div>
+          <p>
+            <span class="key">FAL</span>locate → reserva espacio<br>
+            <span class="key">CH</span>mod 600 → asegura permisos<br>
+            <span class="key">MK</span>swap → formatea como swap<br>
+            <span class="key">SWAP</span>on → activa
+          </p>
+          <p style="margin-top:8px; color: var(--text-dim); font-size:12px;">Frase: <em>"Fal-Ch-Mk-On"</em> — como encender un motor en 4 pasos.</p>
+        </div>
+
+        <div class="mnemonic">
+          <div class="mnemonic-title">🧠 Errores WebLogic — "JDST–Display"</div>
+          <p>
+            <span class="key">J</span>DK → Necesitas Oracle JDK 17, no OpenJDK<br>
+            <span class="key">D</span>isco /tmp → export TMPDIR antes de instalar<br>
+            <span class="key">S</span>wap → mayor a 512 MB siempre<br>
+            <span class="key">T</span>inventory → crear Oracle Inventory primero<br>
+            <span class="key">Display</span> → usar -silent si no hay pantalla
+          </p>
+        </div>
+
+        <div class="mnemonic">
+          <div class="mnemonic-title">🧠 Comandos de diagnóstico — "BDF + LS + FREE"</div>
+          <p>
+            <span class="key">B</span>lkid → ver UUID de discos<br>
+            <span class="key">D</span>f -h → espacio en disco montado<br>
+            <span class="key">F</span>ree -h → RAM y Swap<br>
+            <span class="key">LS</span>blk → árbol de discos<br>
+            <span class="key">LS</span>of → archivos abiertos por proceso
+          </p>
+          <p style="margin-top:8px; color: var(--text-dim); font-size:12px;">Ante cualquier duda en infraestructura, ejecuta estos 5 antes de escalar.</p>
+        </div>
+
+        <div class="mnemonic">
+          <div class="mnemonic-title">🧠 fstab — columnas en orden</div>
+          <p>
+            <span class="key">U</span>UID → identificador del volumen<br>
+            <span class="key">M</span>ount point → /u01 o /logs<br>
+            <span class="key">T</span>ipo → xfs<br>
+            <span class="key">O</span>pciones → defaults<br>
+            <span class="key">D</span>ump → 0 (sin backup)<br>
+            <span class="key">P</span>ass → 0 (sin fsck)
+          </p>
+          <p style="margin-top:8px; color: var(--text-dim); font-size:12px;">Nemónico: <em>"UUID Monta Tipo, Options, Dump Pass"</em></p>
+        </div>
+      </div>
+    </section><!-- /mnemonic -->
+
+
+    <!-- ════════════ PAGE: TIMELINE ════════════ -->
+    <section class="page visible" id="page-timeline">
+      <div class="page-header">
+        <div class="page-tag">Planificación</div>
+        <div class="page-title">Timeline — 40 Minutos</div>
+      </div>
+
+      <div class="section">
+        <div class="timeline">
+          <div class="tl-item">
+            <div class="tl-dot">1</div>
+            <div class="tl-content">
+              <div class="tl-title">🖥️ EC2 — Crear instancia &nbsp;<code style="font-size:11px; color:var(--accent2)">5 min</code></div>
+              <div class="tl-sub">Seleccionar RHEL 9 · t2.micro · Agregar 2 discos adicionales · Security Group SSH · Pegar User Data script</div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-dot">2</div>
+            <div class="tl-content">
+              <div class="tl-title">💾 LVM — Crear volúmenes &nbsp;<code style="font-size:11px; color:var(--accent2)">5 min</code></div>
+              <div class="tl-sub">pvcreate → vgcreate → lvcreate (lv_domain 12G + lv_log 8G) → mkfs.xfs → mount → fstab</div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-dot">3</div>
+            <div class="tl-content">
+              <div class="tl-title">☕ JDK — Instalar Oracle JDK 17 &nbsp;<code style="font-size:11px; color:var(--accent2)">5 min</code></div>
+              <div class="tl-sub">Subir tar.gz vía SFTP → tar -xzf → Verificar versión con java -version</div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-dot">4</div>
+            <div class="tl-content">
+              <div class="tl-title">📦 Upload — Subir instalador WebLogic &nbsp;<code style="font-size:11px; color:var(--accent2)">10 min</code></div>
+              <div class="tl-sub">Transferir fmw_14.1.2.0.0_wls.jar vía Termius SFTP a /u01/ · Verificar con ls -lh /u01/</div>
+            </div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-dot">5</div>
+            <div class="tl-content">
+              <div class="tl-title">⚙️ WebLogic Silent Install &nbsp;<code style="font-size:11px; color:var(--accent2)">10 min</code></div>
+              <div class="tl-sub">Crear swap → export TMPDIR → crear response file → createCentralInventory → java -jar -silent -responseFile</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:28px;">
+          <table>
+            <tbody><tr><th>Etapa</th><th>Tiempo</th><th>Riesgo principal</th></tr>
+            <tr><td>EC2</td><td>5 min</td><td>Olvidar discos adicionales</td></tr>
+            <tr><td>LVM</td><td>5 min</td><td>Orden incorrecto PV-VG-LV</td></tr>
+            <tr><td>Java</td><td>5 min</td><td>Usar OpenJDK en vez de Oracle JDK</td></tr>
+            <tr><td>Upload</td><td>10 min</td><td>Velocidad de internet / SFTP</td></tr>
+            <tr><td>Instalar WLS</td><td>10 min</td><td>Falta de swap o TMPDIR</td></tr>
+            <tr><td><strong>Total</strong></td><td><strong>~40 min</strong></td><td></td></tr>
+          </tbody></table>
+        </div>
+
+        <div class="card ok" style="margin-top:24px;">
+          <div class="card-title">🏆 Lo que dominaste hoy</div>
+          <ul>
+            <li>LVM en producción real (PV → VG → LV)</li>
+            <li>Gestión de swap en Linux</li>
+            <li>Oracle Inventory y structure</li>
+            <li>Silent install de middleware enterprise</li>
+            <li>Troubleshooting de instalador (5 errores resueltos)</li>
+          </ul>
+        </div>
+      </div>
+    </section><!-- /timeline -->
+
+  </main><!-- /content -->
+</div><!-- /layout -->
+
+
+<script>
+  // ── NAV ──
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('visible'));
+    document.getElementById('page-' + id).classList.add('visible');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    document.getElementById('mainContent').scrollTop = 0;
+  }
+
+  // ── SEARCH ──
+  function searchManual(query) {
+    const q = query.trim().toLowerCase();
+    // Remove existing highlights
+    document.querySelectorAll('mark').forEach(m => {
+      m.outerHTML = m.innerHTML;
+    });
+    if (!q || q.length < 2) return;
+
+    // Show all pages temporarily to search
+    const allPages = document.querySelectorAll('.page');
+    let found = [];
+
+    allPages.forEach(page => {
+      const walker = document.createTreeWalker(page, NodeFilter.SHOW_TEXT);
+      let node;
+      while (node = walker.nextNode()) {
+        if (node.nodeValue.toLowerCase().includes(q)) {
+          const parent = node.parentNode;
+          if (parent.tagName !== 'SCRIPT' && parent.tagName !== 'STYLE') {
+            const highlighted = node.nodeValue.replace(
+              new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'),
+              match => `<mark>${match}</mark>`
+            );
+            const span = document.createElement('span');
+            span.innerHTML = highlighted;
+            parent.replaceChild(span, node);
+            found.push(page.id.replace('page-', ''));
+          }
+        }
+      }
+    });
+
+    // Navigate to first result
+    if (found.length > 0) {
+      const firstPageId = found[0];
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('visible'));
+      document.getElementById('page-' + firstPageId).classList.add('visible');
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      // Find matching nav item
+      document.querySelectorAll('.nav-item').forEach(n => {
+        if (n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + firstPageId + "'")) {
+          n.classList.add('active');
+        }
+      });
+      const firstMark = document.querySelector('mark');
+      if (firstMark) firstMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+</script>
+
+
+</body></html>
