@@ -1,1196 +1,941 @@
 <!DOCTYPE html>
-<!-- saved from url=(0061)file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html# -->
+<!-- saved from url=(0047)file:///C:/Users/Usuario/Downloads/index_3.html -->
 <html lang="es"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Runbook — WebLogic en EC2 | Manual Técnico</title>
+<title>Manual Maestro — Infraestructura | Linux · AIX · WebLogic · EC2</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
-
-  :root {
-    --bg:         #1e1f26;
-    --surface:    #252631;
-    --surface2:   #2e3040;
-    --border:     #3a3d52;
-    --accent:     #7c8cff;
-    --accent2:    #52e5a0;
-    --warn:       #ff6b6b;
-    --warn2:      #ffb347;
-    --text:       #e2e4f0;
-    --text-dim:   #8890b0;
-    --code-bg:    #181922;
-    --tab-active: #7c8cff;
-    --note-bg:    #2a2b3d;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* ── TOP BAR (OneNote ribbon feel) ── */
-  .ribbon {
-    background: #14151c;
-    border-bottom: 2px solid var(--border);
-    padding: 0 24px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    height: 52px;
-    position: sticky; top: 0; z-index: 100;
-  }
-  .ribbon-logo {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    color: var(--accent);
-    letter-spacing: 2px;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  .ribbon-sep { width: 1px; height: 28px; background: var(--border); }
-  .ribbon-title {
-    font-size: 13px;
-    color: var(--text-dim);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .ribbon-badge {
-    margin-left: auto;
-    background: var(--accent);
-    color: #fff;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 3px 10px;
-    border-radius: 20px;
-    letter-spacing: 0.5px;
-  }
-
-  /* ── LAYOUT ── */
-  .layout {
-    display: flex;
-    flex: 1;
-    min-height: calc(100vh - 52px);
-  }
-
-  /* ── SIDEBAR (OneNote notebook panel) ── */
-  .sidebar {
-    width: 220px;
-    min-width: 220px;
-    background: #14151c;
-    border-right: 1px solid var(--border);
-    padding: 20px 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    position: sticky;
-    top: 52px;
-    height: calc(100vh - 52px);
-    overflow-y: auto;
-  }
-  .sidebar-label {
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--text-dim);
-    letter-spacing: 2px;
-    padding: 0 20px 8px;
-    text-transform: uppercase;
-  }
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 20px;
-    font-size: 13px;
-    cursor: pointer;
-    color: var(--text-dim);
-    border-left: 3px solid transparent;
-    transition: all 0.15s;
-    text-decoration: none;
-  }
-  .nav-item:hover { background: var(--surface); color: var(--text); }
-  .nav-item.active {
-    background: var(--note-bg);
-    color: var(--accent);
-    border-left-color: var(--accent);
-    font-weight: 600;
-  }
-  .nav-item .icon { font-size: 15px; }
-  .nav-divider { height: 1px; background: var(--border); margin: 10px 20px; }
-
-  /* ── SEARCH BAR ── */
-  .search-wrap { padding: 0 16px 14px; }
-  .search-input {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 7px 12px;
-    color: var(--text);
-    font-size: 12px;
-    font-family: 'DM Sans', sans-serif;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .search-input:focus { border-color: var(--accent); }
-  .search-input::placeholder { color: var(--text-dim); }
-
-  /* ── MAIN CONTENT ── */
-  .content {
-    flex: 1;
-    padding: 32px 40px 60px;
-    max-width: 900px;
-    overflow-y: auto;
-  }
-
-  /* page sections */
-  .page { display: none; }
-  .page.visible { display: block; }
-
-  /* ── PAGE HEADER ── */
-  .page-header {
-    border-bottom: 2px solid var(--border);
-    padding-bottom: 18px;
-    margin-bottom: 28px;
-  }
-  .page-tag {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 6px;
-  }
-  .page-title {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1.2;
-  }
-  .page-meta {
-    margin-top: 8px;
-    font-size: 12px;
-    color: var(--text-dim);
-    display: flex;
-    gap: 16px;
-  }
-  .page-meta span { display: flex; align-items: center; gap: 4px; }
-
-  /* ── SECTION ── */
-  .section {
-    margin-bottom: 36px;
-  }
-  .section-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--accent);
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .section-title .step-num {
-    background: var(--accent);
-    color: #fff;
-    width: 26px; height: 26px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  /* ── CODE BLOCK ── */
-  pre {
-    background: var(--code-bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px 18px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    color: #c9d1e9;
-    overflow-x: auto;
-    position: relative;
-    margin: 10px 0;
-    line-height: 1.6;
-  }
-  pre .comment { color: #5a6080; font-style: italic; }
-  pre .cmd { color: #7c8cff; }
-  pre .arg { color: #52e5a0; }
-  pre .flag { color: #ffb347; }
-  pre .path { color: #ff8fd0; }
-  .code-label {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin-bottom: 4px;
-  }
-
-  /* ── INLINE CODE ── */
-  code {
-    background: var(--code-bg);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 2px 7px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: #c9d1e9;
-  }
-
-  /* ── INFO / WARN CARDS ── */
-  .card {
-    background: var(--surface);
-    border-radius: 10px;
-    padding: 16px 20px;
-    margin-bottom: 14px;
-    border-left: 4px solid var(--accent);
-  }
-  .card.warn  { border-left-color: var(--warn); }
-  .card.ok    { border-left-color: var(--accent2); }
-  .card.info  { border-left-color: var(--warn2); }
-  .card-title {
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 8px;
-  }
-  .card.warn  .card-title { color: var(--warn); }
-  .card.ok    .card-title { color: var(--accent2); }
-  .card.info  .card-title { color: var(--warn2); }
-  .card p, .card li { font-size: 13.5px; line-height: 1.7; color: var(--text); }
-  .card ul { padding-left: 18px; }
-
-  /* ── TABLE ── */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 14px 0;
-    font-size: 13.5px;
-  }
-  th {
-    background: var(--surface2);
-    color: var(--accent);
-    font-weight: 700;
-    font-size: 11px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    padding: 10px 14px;
-    text-align: left;
-    border-bottom: 2px solid var(--border);
-  }
-  td {
-    padding: 9px 14px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text);
-    vertical-align: top;
-  }
-  tr:hover td { background: var(--surface); }
-  .td-cmd { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #7c8cff; }
-  .td-ok  { color: var(--accent2); font-weight: 600; }
-  .td-err { color: var(--warn);  font-weight: 600; }
-
-  /* ── MNEMONIC BOX ── */
-  .mnemonic {
-    background: linear-gradient(135deg, #1e1f3a 0%, #2a1e3a 100%);
-    border: 1px dashed #5a4acc;
-    border-radius: 10px;
-    padding: 16px 20px;
-    margin: 18px 0;
-  }
-  .mnemonic-title {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: #a08cff;
-    margin-bottom: 10px;
-  }
-  .mnemonic p { font-size: 13.5px; color: var(--text); line-height: 1.7; }
-  .mnemonic .key { color: #c9b8ff; font-weight: 700; font-size: 15px; }
-
-  /* ── GLOSARIO ── */
-  .glossary-item {
-    display: flex;
-    gap: 16px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
-    font-size: 13.5px;
-    line-height: 1.6;
-  }
-  .glossary-item:last-child { border-bottom: none; }
-  .glossary-term {
-    min-width: 140px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--accent2);
-    font-weight: 600;
-  }
-  .glossary-def { color: var(--text); }
-
-  /* ── TIMELINE ── */
-  .timeline { display: flex; flex-direction: column; gap: 0; }
-  .tl-item {
-    display: flex;
-    gap: 16px;
-    position: relative;
-  }
-  .tl-item::before {
-    content: '';
-    position: absolute;
-    left: 19px;
-    top: 36px;
-    bottom: -10px;
-    width: 2px;
-    background: var(--border);
-  }
-  .tl-item:last-child::before { display: none; }
-  .tl-dot {
-    width: 40px; height: 40px;
-    border-radius: 50%;
-    background: var(--surface2);
-    border: 2px solid var(--accent);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--accent);
-    flex-shrink: 0;
-    margin-top: 4px;
-  }
-  .tl-content {
-    flex: 1;
-    padding: 6px 0 24px;
-  }
-  .tl-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 6px;
-  }
-  .tl-sub { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
-
-  /* ── SCROLLBAR ── */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-  /* ── SEARCH HIGHLIGHT ── */
-  mark { background: #ffb34740; color: var(--warn2); border-radius: 2px; }
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Sora:wght@400;500;600;700;800&display=swap');
+:root{--bg:#0f1117;--surface:#161822;--surface2:#1e2030;--border:#2e3150;--accent:#6c8bff;--accent2:#3dffa0;--warn:#ff5f5f;--warn2:#ffb84d;--purple:#c084fc;--text:#dde1f5;--text-dim:#7880a8;--code-bg:#0a0c14;--radius:10px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+.ribbon{background:#0a0c14;border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:12px;height:50px;position:sticky;top:0;z-index:200}
+.r-logo{font-family:'Fira Code',monospace;font-size:12px;color:var(--accent);letter-spacing:3px;font-weight:600;white-space:nowrap}
+.r-sep{width:1px;height:26px;background:var(--border);flex-shrink:0}
+.r-title{font-size:12px;color:var(--text-dim);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.r-chips{display:flex;gap:6px;margin-left:auto;flex-shrink:0}
+.chip{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.5px;white-space:nowrap}
+.chip-blue{background:#1a2a5e;color:var(--accent)}.chip-green{background:#0f3028;color:var(--accent2)}.chip-orange{background:#3a2200;color:var(--warn2)}.chip-red{background:#3a1a1a;color:var(--warn)}
+.layout{display:flex;flex:1}
+.sidebar{width:235px;min-width:235px;background:#0a0c14;border-right:1px solid var(--border);padding:14px 0 40px;position:sticky;top:50px;height:calc(100vh - 50px);overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.sb-section{font-size:9.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);padding:12px 18px 5px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:7px 18px;font-size:12px;cursor:pointer;color:var(--text-dim);border-left:3px solid transparent;transition:all .15s;text-decoration:none;user-select:none}
+.nav-item:hover{background:var(--surface);color:var(--text)}
+.nav-item.active{background:var(--surface2);color:var(--accent);border-left-color:var(--accent);font-weight:600}
+.nav-item .ic{font-size:13px;width:17px;text-align:center;flex-shrink:0}
+.nav-divider{height:1px;background:var(--border);margin:6px 18px}
+.search-wrap{padding:8px 14px 10px}
+.search-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;color:var(--text);font-size:12px;font-family:'Sora',sans-serif;outline:none;transition:border-color .2s}
+.search-input:focus{border-color:var(--accent)}
+.search-input::placeholder{color:var(--text-dim)}
+.content{flex:1;padding:28px 38px 60px;overflow-y:auto}
+.page{display:none}.page.visible{display:block}
+.page-header{border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:24px}
+.page-tag{font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.page-title{font-size:24px;font-weight:800;color:var(--text);line-height:1.2}
+.page-sub{margin-top:6px;font-size:12px;color:var(--text-dim)}
+.section{margin-bottom:30px}
+.sec-title{font-size:14px;font-weight:700;color:var(--accent);margin-bottom:11px;display:flex;align-items:center;gap:9px}
+.sec-title .snum{background:var(--accent);color:#fff;width:23px;height:23px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px;font-family:'Fira Code',monospace;font-size:12px;color:#bcc6e8;overflow-x:auto;margin:8px 0;line-height:1.65}
+code{background:var(--code-bg);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-family:'Fira Code',monospace;font-size:11px;color:#bcc6e8}
+pre .cm{color:#3d4568;font-style:italic}pre .cmd{color:#6c8bff}pre .arg{color:#3dffa0}pre .flag{color:#ffb84d}pre .path{color:#ff8fd0}pre .val{color:#c084fc}
+.card{background:var(--surface);border-radius:var(--radius);padding:13px 17px;margin-bottom:11px;border-left:4px solid var(--accent)}
+.card.warn{border-left-color:var(--warn)}.card.ok{border-left-color:var(--accent2)}.card.info{border-left-color:var(--warn2)}.card.purple{border-left-color:var(--purple)}
+.ct{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.card .ct{color:var(--accent)}.card.warn .ct{color:var(--warn)}.card.ok .ct{color:var(--accent2)}.card.info .ct{color:var(--warn2)}.card.purple .ct{color:var(--purple)}
+.card p,.card li{font-size:13px;line-height:1.7;color:var(--text)}.card ul{padding-left:18px}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px}
+th{background:var(--surface2);color:var(--accent);font-weight:700;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:9px 12px;text-align:left;border-bottom:2px solid var(--border)}
+td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top;line-height:1.6}
+tr:hover td{background:var(--surface)}
+.tc{font-family:'Fira Code',monospace;font-size:11px;color:#6c8bff}
+.tok{color:var(--accent2);font-weight:600}.terr{color:var(--warn);font-weight:600}.twarn{color:var(--warn2);font-weight:600}
+.mnemonic{background:linear-gradient(135deg,#131428 0%,#1e1030 100%);border:1px dashed #4a3888;border-radius:var(--radius);padding:14px 17px;margin:13px 0}
+.mn-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#a080f8;margin-bottom:8px}
+.mnemonic p{font-size:12.5px;color:var(--text);line-height:1.8}
+.key{color:#c9b0ff;font-weight:700;font-size:14px}
+.flow{display:flex;flex-direction:column;gap:0}
+.flow-step{display:flex;gap:13px;position:relative}
+.flow-step::before{content:'';position:absolute;left:16px;top:33px;bottom:-10px;width:2px;background:var(--border)}
+.flow-step:last-child::before{display:none}
+.flow-dot{width:34px;height:34px;border-radius:50%;background:var(--surface2);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--accent);flex-shrink:0;margin-top:4px}
+.flow-content{flex:1;padding:4px 0 20px}
+.flow-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:5px}
+.flow-sub{font-size:12px;color:var(--text-dim);line-height:1.65}
+.gitem{display:flex;gap:13px;padding:10px 0;border-bottom:1px solid var(--border);font-size:12.5px;line-height:1.65}
+.gitem:last-child{border-bottom:none}
+.gterm{min-width:145px;font-family:'Fira Code',monospace;font-size:11px;color:var(--accent2);font-weight:600}
+.gdef{color:var(--text)}
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin:11px 0}
+.cmp-col{background:var(--surface);border-radius:var(--radius);padding:13px 15px;border-top:3px solid var(--accent)}
+.cmp-col.aix{border-top-color:var(--warn2)}
+.cmp-head{font-size:10.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:9px}
+.cmp-col .cmp-head{color:var(--accent)}.cmp-col.aix .cmp-head{color:var(--warn2)}
+.cmp-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11.5px;gap:8px}
+.cmp-row:last-child{border-bottom:none}
+.cmp-label{color:var(--text-dim)}.cmp-val{font-family:'Fira Code',monospace;font-size:10.5px;color:var(--text)}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:.5px;vertical-align:middle}
+.badge-blue{background:#1a2a5e;color:var(--accent)}.badge-green{background:#0f3028;color:var(--accent2)}.badge-red{background:#3a1a1a;color:var(--warn)}.badge-yellow{background:#3a2a00;color:var(--warn2)}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+mark{background:#ffb34730;color:var(--warn2);border-radius:2px}
 </style>
 </head>
 <body>
-
-<!-- ═══════════════════════════════ RIBBON ═══════════════════════════════ -->
 <div class="ribbon">
-  <div class="ribbon-logo">⬡ RUNBOOK</div>
-  <div class="ribbon-sep"></div>
-  <div class="ribbon-title">WebLogic 14.1.2 · EC2 RHEL 9 · LVM · Silent Install</div>
-  <div class="ribbon-badge">v1.0 — 40 min</div>
+  <div class="r-logo">⬡ MANUAL MAESTRO</div>
+  <div class="r-sep"></div>
+  <div class="r-title">Infraestructura — Linux · AIX · WebLogic · Amazon EC2</div>
+  <div class="r-chips">
+    <span class="chip chip-blue">Linux/RHEL</span>
+    <span class="chip chip-green">AIX 7.x</span>
+    <span class="chip chip-orange">WebLogic 14</span>
+    <span class="chip chip-red">Entrevistas 6-7M</span>
+  </div>
 </div>
-
-<!-- ═══════════════════════════════ LAYOUT ═══════════════════════════════ -->
 <div class="layout">
+<nav class="sidebar">
+  <div class="search-wrap">
+    <input class="search-input" id="searchInput" type="text" placeholder="🔍  Buscar en todo el manual..." oninput="searchManual(this.value)">
+  </div>
+  <div class="sb-section">🏠 Inicio</div>
+  <a class="nav-item active" onclick="showPage(&#39;home&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">📌</span>Portada General</a>
+  <div class="nav-divider"></div>
+  <div class="sb-section">🐧 Linux / RHEL</div>
+  <a class="nav-item" onclick="showPage(&#39;linux-diag&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">🔍</span>Diagnóstico Rápido</a>
+  <a class="nav-item" onclick="showPage(&#39;linux-proc&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">📋</span>Procedimientos</a>
+  <a class="nav-item" onclick="showPage(&#39;linux-cmd&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">💻</span>Comandos Clave</a>
+  <div class="nav-divider"></div>
+  <div class="sb-section">🔵 AIX IBM</div>
+  <a class="nav-item" onclick="showPage(&#39;aix-diff&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">⚖️</span>AIX vs Linux</a>
+  <a class="nav-item" onclick="showPage(&#39;aix-diag&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">🔍</span>Diagnóstico AIX</a>
+  <a class="nav-item" onclick="showPage(&#39;aix-proc&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">📋</span>Procedimientos AIX</a>
+  <div class="nav-divider"></div>
+  <div class="sb-section">⚙️ WebLogic / EC2</div>
+  <a class="nav-item" onclick="showPage(&#39;wls-infra&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">🖥️</span>EC2 + Discos</a>
+  <a class="nav-item" onclick="showPage(&#39;wls-lvm&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">💾</span>LVM</a>
+  <a class="nav-item" onclick="showPage(&#39;wls-fs&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">📁</span>Filesystem</a>
+  <a class="nav-item" onclick="showPage(&#39;wls-swap&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">🔄</span>Swap</a>
+  <a class="nav-item" onclick="showPage(&#39;wls-install&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">📦</span>Instalación WLS</a>
+  <a class="nav-item" onclick="showPage(&#39;wls-errors&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">🔥</span>Errores / Fix</a>
+  <div class="nav-divider"></div>
+  <div class="sb-section">🧠 Razonamiento</div>
+  <a class="nav-item" onclick="showPage(&#39;reason&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">🧠</span>Cómo Razonar</a>
+  <a class="nav-item" onclick="showPage(&#39;tipos&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">⚡</span>3 Tipos de Falla</a>
+  <div class="nav-divider"></div>
+  <div class="nav-divider"></div>
+  <div class="sb-section">📊 Storage / IO</div>
+  <a class="nav-item" onclick="showPage(&#39;iostat&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">💿</span>iostat — Lectura SRE</a>
+  <a class="nav-item" onclick="showPage(&#39;sre-corr&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">🔗</span>Correlación top+vmstat+free</a>
+  <a class="nav-item" onclick="showPage(&#39;df-du&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">🗂️</span>df vs du — Disco lleno</a>
+  <a class="nav-item" onclick="showPage(&#39;ps-aux&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">⚙️</span>ps aux — Procesos</a>
+  <div class="nav-divider"></div>
+  <div class="sb-section">📚 Referencia</div>
+  <a class="nav-item" onclick="showPage(&#39;glossary&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">📖</span>Glosario Técnico</a>
+  <a class="nav-item" onclick="showPage(&#39;mnemonic&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">🧠</span>Mnemotécnicas</a>
+  <a class="nav-item" onclick="showPage(&#39;wls-timeline&#39;)" href="file:///C:/Users/Usuario/Downloads/index_3.html#"><span class="ic">⏱️</span>Timeline 40 min</a>
+</nav>
+<main class="content" id="mainContent">
 
-  <!-- ── SIDEBAR ── -->
-  <nav class="sidebar">
-    <div class="sidebar-label">Secciones</div>
-    <div class="search-wrap">
-      <input class="search-input" id="searchInput" type="text" placeholder="🔍  Buscar en manual…" oninput="searchManual(this.value)">
+<section class="page visible" id="page-home">
+  <div class="page-header">
+    <div class="page-tag">Manual Maestro de Infraestructura</div>
+    <div class="page-title">Linux · AIX · WebLogic · Amazon EC2</div>
+    <div class="page-sub">Guía unificada para operación diaria, troubleshooting y preparación de entrevistas técnicas nivel 6-7M</div>
+  </div>
+  <div class="section">
+    <table>
+      <tbody><tr><th>Módulo</th><th>Contenido</th><th>Tecnología</th></tr>
+      <tr><td>🐧 Linux / RHEL</td><td>Diagnóstico, procedimientos, servidor lento, comandos</td><td class="tc">top, vmstat, iostat, journalctl</td></tr>
+      <tr><td>🔵 AIX IBM</td><td>Diferencias vs Linux, topas, errpt, lparstat, procedimientos</td><td class="tc">topas, lssrc, errpt, svmon</td></tr>
+      <tr><td>⚙️ WebLogic / EC2</td><td>LVM, filesystem, swap, silent install, errores</td><td class="tc">RHEL 9, JDK 17, WLS 14.1.2</td></tr>
+      <tr><td>🧠 Razonamiento</td><td>Flujo mental para fallas: 3 tipos de problema</td><td class="tc">CPU / Memory / IO Bound</td></tr>
+      <tr><td>📖 Referencia</td><td>Glosario, reglas mnemotécnicas, timeline 40 min</td><td class="tc">18 términos + 7 reglas</td></tr>
+    </tbody></table>
+    <div class="card ok" style="margin-top:18px"><div class="ct">✅ Cómo usar este manual</div>
+    <p>Usa la <strong>barra lateral</strong> para navegar. Usa el <strong>buscador</strong> para encontrar cualquier comando o término al instante. Este manual crece con cada nuevo documento que agregues.</p></div>
+  </div>
+</section>
+
+<section class="page" id="page-linux-diag">
+  <div class="page-header"><div class="page-tag">Linux / RHEL</div><div class="page-title">Diagnóstico del Sistema Linux</div><div class="page-sub">CPU, Memoria, Disco y Load Average</div></div>
+  <div class="section">
+    <div class="sec-title"><span class="snum">1</span>Load Average</div>
+    <div class="card info"><div class="ct">ℹ️ Qué es</div><p>Promedio de procesos ejecutándose o esperando CPU/IO. <strong>NO es porcentaje.</strong> Siempre comparar contra número de CPUs.</p></div>
+    <pre><span class="cm"># Formato: load average: 8.00  7.50  6.90  (1min  5min  15min)</span></pre>
+    <table>
+      <tbody><tr><th>Load vs CPUs</th><th>Interpretación</th><th>Acción</th></tr>
+      <tr><td>Load menor o igual a CPUs</td><td class="tok">Normal</td><td>Sin acción</td></tr>
+      <tr><td>Load mayor a CPUs</td><td class="terr">Cola de espera</td><td>Investigar</td></tr>
+      <tr><td>Load mayor al doble de CPUs</td><td class="terr">Saturación seria</td><td>Intervención inmediata</td></tr>
+    </tbody></table>
+    <div class="mnemonic"><div class="mn-title">🧠 Leer TENDENCIA</div><p>Primer número <span class="key">MAYOR</span> que el tercero = empeorando: <code>9.0 6.0 3.0</code><br>Primer número <span class="key">MENOR</span> que el tercero = mejorando: <code>3.0 6.0 9.0</code></p></div>
+  </div>
+  <div class="section">
+    <div class="sec-title"><span class="snum">2</span>CPU en top</div>
+    <pre><span class="cm"># %Cpu(s): 88.0 us,  7.0 sy,  3.0 id,  2.0 wa</span></pre>
+    <table>
+      <tbody><tr><th>Campo</th><th>Nombre</th><th>Alerta cuando</th></tr>
+      <tr><td class="tc">us</td><td>user</td><td class="terr">mayor a 80%</td></tr>
+      <tr><td class="tc">id</td><td>idle — CPU libre</td><td class="terr">menor a 10%</td></tr>
+      <tr><td class="tc">wa</td><td>iowait</td><td class="terr">mayor a 10%</td></tr>
+    </tbody></table>
+    <div class="card warn"><div class="ct">⚠️ Trampa de entrevista</div><p><strong>CPU idle alto + Load alto = NO es CPU.</strong> Es IO o memoria.</p></div>
+  </div>
+  <div class="section">
+    <div class="sec-title"><span class="snum">3</span>Memoria y Swap</div>
+    <pre><span class="cmd">free</span> <span class="flag">-m</span></pre>
+    <div class="card info"><div class="ct">ℹ️ Memory Pressure</div><p>Swap creciendo constantemente = sistema usando disco como RAM. El disco es <strong>100x más lento</strong> que la RAM.</p></div>
+  </div>
+</section>
+
+<section class="page" id="page-linux-proc">
+  <div class="page-header"><div class="page-tag">Linux / RHEL</div><div class="page-title">Revisión Matutina y Servidor Lento</div></div>
+  <div class="section">
+    <div class="sec-title"><span class="snum">1</span>Revisión Matutina</div>
+    <div class="flow">
+      <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content"><div class="flow-title">Salud general</div><pre><span class="cmd">uptime</span>   <span class="cm"># load + tiempo encendido</span>
+<span class="cmd">nproc</span>    <span class="cm"># cantidad de CPUs</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">2</div><div class="flow-content"><div class="flow-title">CPU</div><pre><span class="cmd">top</span>   <span class="cm"># id menor a 10% = CPU saturada</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content"><div class="flow-title">Memoria</div><pre><span class="cmd">free</span> <span class="flag">-m</span>   <span class="cm"># Swap creciendo = alerta</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">4</div><div class="flow-content"><div class="flow-title">Disco</div><pre><span class="cmd">df</span> <span class="flag">-h</span>   <span class="cm"># 80%+ monitorear | 100% critico</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">5</div><div class="flow-content"><div class="flow-title">Servicios</div><pre><span class="cmd">systemctl status</span> <span class="arg">nombre.service</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">6</div><div class="flow-content"><div class="flow-title">Logs</div><pre><span class="cmd">journalctl</span> <span class="flag">-p err</span> <span class="flag">--since today</span></pre></div></div>
     </div>
+  </div>
+  <div class="section">
+    <div class="sec-title"><span class="snum">2</span>Servidor Lento</div>
+    <div class="flow">
+      <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content"><div class="flow-title">Load general vs app</div><pre><span class="cmd">uptime</span>   <span class="cm"># load normal + app lenta = problema en app</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">2</div><div class="flow-content"><div class="flow-title">CPU</div><pre><span class="cmd">top</span>
+<span class="cm"># id bajo + us alto  = CPU bound</span>
+<span class="cm"># id alto + wa alto  = IO bound</span>
+<span class="cm"># id alto + load alto = memoria/IO</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content"><div class="flow-title">Confirmar vmstat</div><pre><span class="cmd">vmstat</span> <span class="arg">1 5</span>
+<span class="cm"># si+so constantes = memory pressure</span>
+<span class="cm"># b mayor a 0      = IO bound</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">4</div><div class="flow-content"><div class="flow-title">Disco</div><pre><span class="cmd">iostat</span> <span class="flag">-x</span> <span class="arg">1 5</span>   <span class="cm"># %util mayor a 90% = saturado</span></pre></div></div>
+    </div>
+  </div>
+</section>
 
-    <a class="nav-item" onclick="showPage(&#39;overview&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
-      <span class="icon">📋</span> Resumen General
-    </a>
-    <a class="nav-item" onclick="showPage(&#39;infra&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
-      <span class="icon">🖥️</span> 1. EC2 + Discos
-    </a>
-    <a class="nav-item" onclick="showPage(&#39;lvm&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
-      <span class="icon">💾</span> 2. LVM
-    </a>
-    <a class="nav-item" onclick="showPage(&#39;fs&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
-      <span class="icon">📁</span> 3. Filesystem
-    </a>
-    <a class="nav-item" onclick="showPage(&#39;swap&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
-      <span class="icon">🔄</span> 4. Swap
-    </a>
-    <a class="nav-item" onclick="showPage(&#39;install&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
-      <span class="icon">⚙️</span> 5. Instalación WLS
-    </a>
-    <a class="nav-item" onclick="showPage(&#39;errors&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
-      <span class="icon">🔥</span> 6. Errores / Fix
-    </a>
-    <div class="nav-divider"></div>
-    <a class="nav-item" onclick="showPage(&#39;glossary&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
-      <span class="icon">📖</span> Glosario Técnico
-    </a>
-    <a class="nav-item" onclick="showPage(&#39;mnemonic&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
-      <span class="icon">🧠</span> Reglas Mnemotécnicas
-    </a>
-    <a class="nav-item active" onclick="showPage(&#39;timeline&#39;)" href="file:///C:/Users/Usuario/Downloads/runbook-weblogic-ec2.html#">
-      <span class="icon">⏱️</span> Timeline 40 min
-    </a>
-  </nav>
+<section class="page" id="page-linux-cmd">
+  <div class="page-header"><div class="page-tag">Linux</div><div class="page-title">Comandos de Diagnóstico</div></div>
+  <div class="section">
+    <table>
+      <tbody><tr><th>Comando</th><th>Qué hace</th><th>Cuándo</th></tr>
+      <tr><td class="tc">uptime</td><td>Load + tiempo encendido</td><td>Primera revisión siempre</td></tr>
+      <tr><td class="tc">nproc</td><td>Número de CPUs</td><td>Para interpretar load</td></tr>
+      <tr><td class="tc">top</td><td>CPU, memoria, procesos en tiempo real</td><td>Servidor lento</td></tr>
+      <tr><td class="tc">top -o %CPU</td><td>Procesos ordenados por CPU</td><td>Identificar proceso culpable</td></tr>
+      <tr><td class="tc">free -m</td><td>RAM y swap en MB</td><td>Sospechar memory pressure</td></tr>
+      <tr><td class="tc">vmstat 1</td><td>Vista completa cada 1 seg</td><td>Diagnóstico profundo</td></tr>
+      <tr><td class="tc">df -h</td><td>Espacio por filesystem</td><td>Revisión matutina</td></tr>
+      <tr><td class="tc">iostat -x 1 5</td><td>Estadísticas disco con %util</td><td>Confirmar IO bound</td></tr>
+      <tr><td class="tc">lsof -p PID</td><td>Archivos abiertos por proceso</td><td>Disco lleno</td></tr>
+      <tr><td class="tc">journalctl -p err</td><td>Errores del sistema hoy</td><td>Revisión matutina</td></tr>
+      <tr><td class="tc">systemctl status</td><td>Estado de un servicio</td><td>Verificar servicios</td></tr>
+    </tbody></table>
+  </div>
+  <div class="section">
+    <div class="sec-title">vmstat — Campos clave</div>
+    <table>
+      <tbody><tr><th>Campo</th><th>Qué mide</th><th>Alto significa</th></tr>
+      <tr><td class="tc">r</td><td>Procesos esperando CPU</td><td>Contención de CPU</td></tr>
+      <tr><td class="tc">b</td><td>Procesos bloqueados por IO</td><td>Disco lento</td></tr>
+      <tr><td class="tc">si</td><td>Swap in — páginas desde disco</td><td>Paginación activa</td></tr>
+      <tr><td class="tc">so</td><td>Swap out — páginas al disco</td><td>RAM insuficiente</td></tr>
+      <tr><td class="tc">wa</td><td>CPU esperando disco</td><td>IO bound</td></tr>
+      <tr><td class="tc">id</td><td>CPU idle (libre)</td><td>Bajo es el problema</td></tr>
+    </tbody></table>
+  </div>
+</section>
 
-  <!-- ── CONTENT ── -->
-  <main class="content" id="mainContent">
-
-    <!-- ════════════ PAGE: OVERVIEW ════════════ -->
-    <section class="page" id="page-overview">
-      <div class="page-header">
-        <div class="page-tag">Manual de Infraestructura</div>
-        <div class="page-title">Runbook — WebLogic en EC2 (40 min)</div>
-        <div class="page-meta">
-          <span>🖥️ Red Hat 9</span>
-          <span>☁️ Amazon EC2</span>
-          <span>☕ JDK 17</span>
-          <span>🗄️ WebLogic 14.1.2</span>
-        </div>
+<section class="page" id="page-aix-diff">
+  <div class="page-header"><div class="page-tag">AIX IBM</div><div class="page-title">AIX vs Linux — Diferencias Críticas</div></div>
+  <div class="section">
+    <div class="card warn"><div class="ct">⚠️ Regla de entrevista</div><p>En AIX <strong>no existe</strong> systemd, SELinux ni firewalld. Todo tiene equivalentes IBM.</p></div>
+    <div class="cmp-grid">
+      <div class="cmp-col"><div class="cmp-head">🐧 Linux (RHEL)</div>
+        <div class="cmp-row"><span class="cmp-label">Monitor tiempo real</span><span class="cmp-val">top</span></div>
+        <div class="cmp-row"><span class="cmp-label">Memoria virtual</span><span class="cmp-val">free -m / vmstat</span></div>
+        <div class="cmp-row"><span class="cmp-label">Swap</span><span class="cmp-val">swapon / swapoff</span></div>
+        <div class="cmp-row"><span class="cmp-label">Servicios</span><span class="cmp-val">systemctl</span></div>
+        <div class="cmp-row"><span class="cmp-label">Log sistema</span><span class="cmp-val">journalctl / dmesg</span></div>
+        <div class="cmp-row"><span class="cmp-label">Espacio disco</span><span class="cmp-val">df -h</span></div>
+        <div class="cmp-row"><span class="cmp-label">LVM discos</span><span class="cmp-val">pvs / vgs / lvs</span></div>
+        <div class="cmp-row"><span class="cmp-label">CPUs</span><span class="cmp-val">nproc / lscpu</span></div>
+        <div class="cmp-row"><span class="cmp-label">Versión SO</span><span class="cmp-val">cat /etc/redhat-release</span></div>
       </div>
-
-      <div class="section">
-        <div class="card info">
-          <div class="card-title">🎯 Objetivo</div>
-          <p>Instalar Oracle WebLogic Server 14.1.2 sobre Amazon EC2 (RHEL 9) usando LVM para gestionar el almacenamiento y modo <strong>silent install</strong> para evitar errores de GUI.</p>
-        </div>
+      <div class="cmp-col aix"><div class="cmp-head">🔵 AIX IBM</div>
+        <div class="cmp-row"><span class="cmp-label">Monitor tiempo real</span><span class="cmp-val">topas</span></div>
+        <div class="cmp-row"><span class="cmp-label">Memoria virtual</span><span class="cmp-val">svmon -G / vmstat</span></div>
+        <div class="cmp-row"><span class="cmp-label">Swap/Paginación</span><span class="cmp-val">lsps / mkps / chps</span></div>
+        <div class="cmp-row"><span class="cmp-label">Servicios (SRC)</span><span class="cmp-val">startsrc / stopsrc / lssrc</span></div>
+        <div class="cmp-row"><span class="cmp-label">Log sistema</span><span class="cmp-val">errpt</span></div>
+        <div class="cmp-row"><span class="cmp-label">Espacio disco</span><span class="cmp-val">df -g (en GB)</span></div>
+        <div class="cmp-row"><span class="cmp-label">LVM discos</span><span class="cmp-val">lspv / lsvg / lslv</span></div>
+        <div class="cmp-row"><span class="cmp-label">CPUs</span><span class="cmp-val">lparstat -i | grep Online</span></div>
+        <div class="cmp-row"><span class="cmp-label">Versión SO</span><span class="cmp-val">oslevel -s</span></div>
       </div>
+    </div>
+  </div>
+</section>
 
-      <div class="section">
-        <div class="section-title">Arquitectura del laboratorio</div>
-        <table>
-          <tbody><tr><th>Componente</th><th>Valor</th><th>Para qué sirve</th></tr>
-          <tr>
-            <td>Tipo de instancia</td>
-            <td class="td-cmd">t2.micro</td>
-            <td>CPU y RAM mínima para el instalador</td>
-          </tr>
-          <tr>
-            <td>Sistema operativo</td>
-            <td class="td-cmd">Red Hat 9</td>
-            <td>Certificado por Oracle para WebLogic</td>
-          </tr>
-          <tr>
-            <td>Disco Root</td>
-            <td class="td-cmd">/dev/nvme0n1 — 12 GB</td>
-            <td>SO base</td>
-          </tr>
-          <tr>
-            <td>Disco LAB2</td>
-            <td class="td-cmd">/dev/nvme1n1 — 9 GB</td>
-            <td>Volumen LVM para dominio y logs</td>
-          </tr>
-          <tr>
-            <td>Disco LAB3</td>
-            <td class="td-cmd">/dev/nvme2n1 — 15 GB</td>
-            <td>Volumen LVM para dominio y logs</td>
-          </tr>
-          <tr>
-            <td>JDK</td>
-            <td class="td-cmd">JDK 17 (Oracle)</td>
-            <td>WebLogic 14.x exige Oracle JDK (no OpenJDK)</td>
-          </tr>
-          <tr>
-            <td>WebLogic</td>
-            <td class="td-cmd">fmw_14.1.2.0.0_wls.jar</td>
-            <td>Servidor de aplicaciones Java EE</td>
-          </tr>
-        </tbody></table>
+<section class="page" id="page-aix-diag">
+  <div class="page-header"><div class="page-tag">AIX IBM</div><div class="page-title">Diagnóstico en AIX</div></div>
+  <div class="section">
+    <div class="sec-title"><span class="snum">1</span>CPUs — SIEMPRE PRIMERO</div>
+    <pre><span class="cmd">lparstat</span> <span class="flag">-i</span> <span class="flag">|</span> grep <span class="val">'Online Virtual'</span>
+<span class="cm"># Salida: Online Virtual CPUs : 4</span></pre>
+  </div>
+  <div class="section">
+    <div class="sec-title"><span class="snum">2</span>topas</div>
+    <pre><span class="cmd">topas</span>   <span class="cm"># 'p'=procesos | 'd'=disco | 'q'=salir</span></pre>
+    <table>
+      <tbody><tr><th>Indicador</th><th>Alerta</th><th>Diagnóstico</th></tr>
+      <tr><td class="tc">Idle%</td><td class="terr">menor a 10%</td><td>CPU saturada</td></tr>
+      <tr><td class="tc">Wait%</td><td class="terr">mayor a 15%</td><td>IO bound</td></tr>
+    </tbody></table>
+  </div>
+  <div class="section">
+    <div class="sec-title"><span class="snum">3</span>errpt y Memoria</div>
+    <pre><span class="cmd">errpt</span> <span class="flag">|</span> head <span class="flag">-20</span>
+<span class="cmd">errpt</span> <span class="flag">-d H</span> <span class="flag">|</span> head <span class="flag">-10</span>   <span class="cm"># solo errores hardware</span>
+<span class="cmd">svmon</span> <span class="flag">-G</span> <span class="flag">-O unit=MB</span>       <span class="cm"># resumen global memoria</span>
+<span class="cmd">lsps</span> <span class="flag">-a</span>                   <span class="cm"># paging space (swap) | alerta si mayor a 70%</span></pre>
+    <div class="card warn"><div class="ct">⚠️ Errores tipo H</div><p>Hardware crítico — escalar inmediatamente con evidencia.</p></div>
+  </div>
+</section>
 
-        <div class="card ok">
-          <div class="card-title">✅ Resultado esperado</div>
-          <p>Al final del proceso verás el mensaje:<br><code>installation completed successfully</code></p>
-        </div>
-      </div>
-    </section><!-- /overview -->
+<section class="page" id="page-aix-proc">
+  <div class="page-header"><div class="page-tag">AIX IBM</div><div class="page-title">Revisión Matutina AIX</div></div>
+  <div class="section">
+    <div class="flow">
+      <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content"><div class="flow-title">Versión SO y uptime</div><pre><span class="cmd">oslevel</span> <span class="flag">-s</span>   <span class="cm"># ej: 7200-05-01</span>
+<span class="cmd">uptime</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">2</div><div class="flow-content"><div class="flow-title">CPUs del LPAR — SIEMPRE PRIMERO</div><pre><span class="cmd">lparstat</span> <span class="flag">-i</span> <span class="flag">|</span> grep <span class="val">'Online Virtual'</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content"><div class="flow-title">CPU y procesos</div><pre><span class="cmd">topas</span>   <span class="cm"># presionar 'p'</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">4</div><div class="flow-content"><div class="flow-title">Memoria y paginación</div><pre><span class="cmd">svmon</span> <span class="flag">-G</span> <span class="flag">-O unit=MB</span>
+<span class="cmd">lsps</span> <span class="flag">-a</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">5</div><div class="flow-content"><div class="flow-title">Disco y errores</div><pre><span class="cmd">df</span> <span class="flag">-g</span>
+<span class="cmd">errpt</span> <span class="flag">|</span> head <span class="flag">-20</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">6</div><div class="flow-content"><div class="flow-title">Servicios SRC</div><pre><span class="cmd">lssrc</span> <span class="flag">-a</span>   <span class="cm"># buscar 'inoperative'</span></pre></div></div>
+    </div>
+  </div>
+</section>
 
-
-    <!-- ════════════ PAGE: INFRA ════════════ -->
-    <section class="page" id="page-infra">
-      <div class="page-header">
-        <div class="page-tag">Paso 1</div>
-        <div class="page-title">EC2 — Crear instancia y User Data</div>
-      </div>
-
-      <div class="section">
-        <div class="section-title">
-          <span class="step-num">1</span> Configuración de la instancia EC2
-        </div>
-        <table>
-          <tbody><tr><th>Campo</th><th>Valor</th></tr>
-          <tr><td>Tipo</td><td class="td-cmd">t2.micro</td></tr>
-          <tr><td>Sistema</td><td class="td-cmd">Red Hat Enterprise Linux 9</td></tr>
-          <tr><td>Root disk</td><td class="td-cmd">12 GB (gp3)</td></tr>
-          <tr><td>Disco adicional 1 (LAB2)</td><td class="td-cmd">9 GB</td></tr>
-          <tr><td>Disco adicional 2 (LAB3)</td><td class="td-cmd">15 GB</td></tr>
-          <tr><td>Security Group</td><td class="td-cmd">Solo SSH (puerto 22)</td></tr>
-        </tbody></table>
-
-        <div class="card warn">
-          <div class="card-title">⚠️ Importante — Security Group</div>
-          <p>Abrir <strong>solo puerto 22 (SSH)</strong> durante la instalación. No expongas consola de administración (7001, 7002) hasta terminar la instalación.</p>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-title">
-          <span class="step-num">2</span> Script User Data (arranque automático)
-        </div>
-
-        <div class="card info">
-          <div class="card-title">ℹ️ ¿Qué es User Data?</div>
-          <p>Es un script que EC2 ejecuta <strong>una sola vez</strong> al crear la instancia. Evita instalar herramientas manualmente después de conectarte.</p>
-        </div>
-
-        <div class="code-label">user-data.sh</div>
-        <pre><span class="comment">#!/bin/bash</span>
-<span class="comment"># Actualizar todos los paquetes del sistema</span>
+<section class="page" id="page-wls-infra">
+  <div class="page-header"><div class="page-tag">WebLogic / EC2 — Paso 1</div><div class="page-title">EC2 — Instancia y User Data</div></div>
+  <div class="section">
+    <table>
+      <tbody><tr><th>Campo</th><th>Valor</th></tr>
+      <tr><td>Tipo</td><td class="tc">t2.micro</td></tr>
+      <tr><td>SO</td><td class="tc">Red Hat Enterprise Linux 9</td></tr>
+      <tr><td>Disco Root</td><td class="tc">/dev/nvme0n1 — 12 GB</td></tr>
+      <tr><td>Disco LAB2</td><td class="tc">/dev/nvme1n1 — 9 GB</td></tr>
+      <tr><td>Disco LAB3</td><td class="tc">/dev/nvme2n1 — 15 GB</td></tr>
+      <tr><td>Security Group</td><td class="tc">Solo SSH (puerto 22)</td></tr>
+    </tbody></table>
+    <pre style="margin-top:16px"><span class="cm">#!/bin/bash   # User Data: se ejecuta 1 vez al crear la instancia</span>
 <span class="cmd">dnf</span> <span class="flag">update -y</span>
-
-<span class="comment"># Instalar herramientas necesarias:</span>
-<span class="comment">#   lvm2    → gestión de volúmenes lógicos (LVM)</span>
-<span class="comment">#   sysstat → iostat, sar para monitoreo de disco/CPU</span>
-<span class="comment">#   lsof    → ver qué procesos tienen archivos abiertos</span>
-<span class="comment">#   unzip   → descomprimir archivos ZIP</span>
 <span class="cmd">dnf</span> <span class="flag">install -y</span> <span class="arg">lvm2 sysstat lsof unzip</span></pre>
-      </div>
-    </section><!-- /infra -->
+  </div>
+</section>
 
+<section class="page" id="page-wls-lvm">
+  <div class="page-header"><div class="page-tag">WebLogic / EC2 — Paso 2</div><div class="page-title">LVM — Volúmenes Lógicos</div></div>
+  <div class="section">
+    <div class="card info"><div class="ct">ℹ️ Capas</div><p><strong>PV</strong> = disco preparado | <strong>VG</strong> = grupo de discos | <strong>LV</strong> = partición virtual</p></div>
+    <div class="flow">
+      <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content"><div class="flow-title">Ver discos</div><pre><span class="cmd">lsblk</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">2</div><div class="flow-content"><div class="flow-title">Physical Volumes</div><pre><span class="cmd">pvcreate</span> <span class="path">/dev/nvme1n1</span> <span class="path">/dev/nvme2n1</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content"><div class="flow-title">Volume Group</div><pre><span class="cmd">vgcreate</span> <span class="arg">vg_weblogic</span> <span class="path">/dev/nvme1n1</span> <span class="path">/dev/nvme2n1</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">4</div><div class="flow-content"><div class="flow-title">Logical Volumes</div><pre><span class="cmd">lvcreate</span> <span class="flag">-n</span> <span class="arg">lv_domain</span> <span class="flag">-L 12G</span> <span class="arg">vg_weblogic</span>
+<span class="cmd">lvcreate</span> <span class="flag">-n</span> <span class="arg">lv_log</span>    <span class="flag">-L 8G</span>  <span class="arg">vg_weblogic</span></pre></div></div>
+    </div>
+    <div class="mnemonic"><div class="mn-title">🧠 Orden LVM — "PVerde VGrande LVive"</div><p><span class="key">PV</span>erde = pvcreate | <span class="key">VG</span>rande = vgcreate | <span class="key">LV</span>ive = lvcreate</p></div>
+  </div>
+</section>
 
-    <!-- ════════════ PAGE: LVM ════════════ -->
-    <section class="page" id="page-lvm">
-      <div class="page-header">
-        <div class="page-tag">Paso 2</div>
-        <div class="page-title">LVM — Volúmenes Lógicos</div>
-      </div>
-
-      <div class="section">
-        <div class="card info">
-          <div class="card-title">ℹ️ ¿Qué es LVM?</div>
-          <p><strong>LVM (Logical Volume Manager)</strong> — gestor de volúmenes lógicos del kernel Linux. Permite combinar múltiples discos físicos en un solo espacio flexible y redimensionable sin reiniciar.</p>
-          <ul>
-            <li><strong>PV (Physical Volume)</strong> = disco físico preparado para LVM</li>
-            <li><strong>VG (Volume Group)</strong> = agrupación de uno o más PV</li>
-            <li><strong>LV (Logical Volume)</strong> = partición virtual sobre el VG, donde montas el filesystem</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-title"><span class="step-num">1</span> Ver discos disponibles</div>
-        <div class="code-label">Terminal</div>
-        <pre><span class="comment"># Listar bloques de disco (árbol visual de discos y particiones)</span>
-<span class="cmd">lsblk</span></pre>
-        <div class="card ok">
-          <div class="card-title">✅ Salida esperada</div>
-          <p>Verás <code>nvme0n1</code> (root), <code>nvme1n1</code> (LAB2) y <code>nvme2n1</code> (LAB3) sin montar.</p>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-title"><span class="step-num">2</span> Crear Physical Volumes</div>
-        <pre><span class="comment"># pvcreate marca discos para que LVM los reconozca</span>
-<span class="cmd">pvcreate</span> <span class="path">/dev/nvme1n1</span> <span class="path">/dev/nvme2n1</span></pre>
-      </div>
-
-      <div class="section">
-        <div class="section-title"><span class="step-num">3</span> Crear Volume Group</div>
-        <pre><span class="comment"># vgcreate nombre_vg disco1 disco2</span>
-<span class="comment"># Une nvme1n1 (9GB) + nvme2n1 (15GB) = 24GB usables</span>
-<span class="cmd">vgcreate</span> <span class="arg">vg_weblogic</span> <span class="path">/dev/nvme1n1</span> <span class="path">/dev/nvme2n1</span></pre>
-      </div>
-
-      <div class="section">
-        <div class="section-title"><span class="step-num">4</span> Crear Logical Volumes</div>
-        <pre><span class="comment"># lv_domain: donde vive el dominio WebLogic (middleware)</span>
-<span class="cmd">lvcreate</span> <span class="flag">-n</span> <span class="arg">lv_domain</span> <span class="flag">-L 12G</span> <span class="arg">vg_weblogic</span>
-
-<span class="comment"># lv_log: donde se guardarán los logs de la aplicación</span>
-<span class="cmd">lvcreate</span> <span class="flag">-n</span> <span class="arg">lv_log</span> <span class="flag">-L 8G</span> <span class="arg">vg_weblogic</span></pre>
-
-        <div class="card info">
-          <div class="card-title">ℹ️ Flags explicados sin símbolos matemáticos</div>
-          <ul>
-            <li><code>-n nombre</code> → asigna un nombre al volumen lógico</li>
-            <li><code>-L 12G</code> → tamaño exacto: <em>L mayúscula igual a 12 gigabytes</em></li>
-          </ul>
-        </div>
-      </div>
-    </section><!-- /lvm -->
-
-
-    <!-- ════════════ PAGE: FS ════════════ -->
-    <section class="page" id="page-fs">
-      <div class="page-header">
-        <div class="page-tag">Paso 3</div>
-        <div class="page-title">Filesystem — Formato, Montaje y Persistencia</div>
-      </div>
-
-      <div class="section">
-        <div class="section-title"><span class="step-num">1</span> Formatear con XFS</div>
-        <div class="card info">
-          <div class="card-title">ℹ️ ¿Qué es XFS?</div>
-          <p>Sistema de archivos de alto rendimiento recomendado en RHEL. Soporta archivos grandes y tiene buen rendimiento de I/O para bases de datos y middleware.</p>
-        </div>
-        <pre><span class="comment"># mkfs.xfs = "make filesystem de tipo XFS"</span>
-<span class="cmd">mkfs.xfs</span> <span class="path">/dev/vg_weblogic/lv_domain</span>
-<span class="cmd">mkfs.xfs</span> <span class="path">/dev/vg_weblogic/lv_log</span></pre>
-      </div>
-
-      <div class="section">
-        <div class="section-title"><span class="step-num">2</span> Crear directorios de montaje</div>
-        <pre><span class="comment"># /u01: convención Oracle para instalaciones (Unidad 01)</span>
-<span class="cmd">mkdir</span> <span class="path">/u01</span>
-
-<span class="comment"># /logs: centraliza todos los logs del servidor</span>
-<span class="cmd">mkdir</span> <span class="path">/logs</span></pre>
-      </div>
-
-      <div class="section">
-        <div class="section-title"><span class="step-num">3</span> Montar los volúmenes</div>
-        <pre><span class="cmd">mount</span> <span class="path">/dev/vg_weblogic/lv_domain</span> <span class="path">/u01</span>
-<span class="cmd">mount</span> <span class="path">/dev/vg_weblogic/lv_log</span>    <span class="path">/logs</span></pre>
-      </div>
-
-      <div class="section">
-        <div class="section-title"><span class="step-num">4</span> Persistencia con /etc/fstab</div>
-        <div class="card warn">
-          <div class="card-title">⚠️ Por qué necesitas fstab</div>
-          <p>Sin esta configuración, al reiniciar la instancia los volúmenes quedan <strong>sin montar</strong> y WebLogic no arranca. <code>fstab</code> monta discos automáticamente al boot.</p>
-        </div>
-
-        <pre><span class="comment"># Obtener UUID de los volúmenes (identificador único del filesystem)</span>
-<span class="cmd">blkid</span> <span class="flag">|</span> grep <span class="arg">vg_weblogic</span></pre>
-
-        <pre><span class="comment"># Editar fstab con vi</span>
+<section class="page" id="page-wls-fs">
+  <div class="page-header"><div class="page-tag">WebLogic / EC2 — Paso 3</div><div class="page-title">Filesystem — Formato, Montaje y fstab</div></div>
+  <div class="section">
+    <div class="flow">
+      <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content"><div class="flow-title">Formatear XFS</div><pre><span class="cmd">mkfs.xfs</span> <span class="path">/dev/vg_weblogic/lv_domain</span>
+<span class="cmd">mkfs.xfs</span> <span class="path">/dev/vg_weblogic/lv_log</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">2</div><div class="flow-content"><div class="flow-title">Crear directorios y montar</div><pre><span class="cmd">mkdir</span> <span class="path">/u01</span> <span class="path">/logs</span>
+<span class="cmd">mount</span> <span class="path">/dev/vg_weblogic/lv_domain</span> <span class="path">/u01</span>
+<span class="cmd">mount</span> <span class="path">/dev/vg_weblogic/lv_log</span>    <span class="path">/logs</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content"><div class="flow-title">Persistencia fstab</div><pre><span class="cmd">blkid</span> <span class="flag">|</span> grep <span class="arg">vg_weblogic</span>   <span class="cm"># obtener UUID</span>
 <span class="cmd">vi</span> <span class="path">/etc/fstab</span>
-
-<span class="comment"># Agregar al final del archivo (sustituir xxxxx por UUID real):</span>
-<span class="comment"># FORMATO: UUID=id  punto_de_montaje  tipo  opciones  dump  pass</span>
 UUID=xxxxx  <span class="path">/u01</span>   xfs  defaults  0  0
-UUID=xxxxx  <span class="path">/logs</span>  xfs  defaults  0  0</pre>
+UUID=xxxxx  <span class="path">/logs</span>  xfs  defaults  0  0</pre></div></div>
+      <div class="flow-step"><div class="flow-dot">4</div><div class="flow-content"><div class="flow-title">Estructura Oracle</div><pre><span class="cmd">mkdir</span> <span class="flag">-p</span> <span class="path">/u01/app/oracle</span>
+<span class="cmd">mkdir</span> <span class="flag">-p</span> <span class="path">/u01/domains</span></pre></div></div>
+    </div>
+  </div>
+</section>
 
-        <div class="card info">
-          <div class="card-title">ℹ️ Columnas de fstab</div>
-          <ul>
-            <li><strong>UUID</strong> = identificador del volumen (más estable que /dev/sdX)</li>
-            <li><strong>punto de montaje</strong> = directorio donde aparecerá el disco</li>
-            <li><strong>xfs</strong> = tipo de filesystem</li>
-            <li><strong>defaults</strong> = opciones estándar (lectura/escritura, no-exec para swap)</li>
-            <li><strong>0 0</strong> = sin backup automático, sin verificación fsck al boot</li>
-          </ul>
-        </div>
-      </div>
+<section class="page" id="page-wls-swap">
+  <div class="page-header"><div class="page-tag">WebLogic / EC2 — Paso 4</div><div class="page-title">Swap — Requerido por WebLogic</div></div>
+  <div class="section">
+    <div class="card warn"><div class="ct">⚠️ Error sin swap</div><p>WebLogic exige swap mayor a 512 MB. Error: <code>swap must be greater than 512MB</code></p></div>
+    <pre><span class="cmd">sudo fallocate</span> <span class="flag">-l 1G</span> <span class="path">/swapfile</span>   <span class="cm"># reserva 1 gigabyte</span>
+<span class="cmd">sudo chmod 600</span> <span class="path">/swapfile</span>          <span class="cm"># solo root puede leer/escribir</span>
+<span class="cmd">sudo mkswap</span> <span class="path">/swapfile</span>             <span class="cm"># formatea como swap</span>
+<span class="cmd">sudo swapon</span> <span class="path">/swapfile</span>             <span class="cm"># activa</span>
+<span class="cmd">free</span> <span class="flag">-h</span>                            <span class="cm"># verificar fila Swap ~1.0G</span></pre>
+    <div class="mnemonic"><div class="mn-title">🧠 SWAP — "FAL-CH-MK-ON"</div><p><span class="key">FAL</span>locate | <span class="key">CH</span>mod 600 | <span class="key">MK</span>swap | swap<span class="key">ON</span></p></div>
+  </div>
+</section>
 
-      <div class="section">
-        <div class="section-title"><span class="step-num">5</span> Crear estructura Oracle</div>
-        <pre><span class="comment"># -p = crea todos los directorios intermedios que falten</span>
-<span class="cmd">mkdir</span> <span class="flag">-p</span> <span class="path">/u01/app/oracle</span>
-<span class="cmd">mkdir</span> <span class="flag">-p</span> <span class="path">/u01/domains</span></pre>
-      </div>
-    </section><!-- /fs -->
-
-
-    <!-- ════════════ PAGE: SWAP ════════════ -->
-    <section class="page" id="page-swap">
-      <div class="page-header">
-        <div class="page-tag">Paso 4</div>
-        <div class="page-title">Swap — Memoria Virtual para WebLogic</div>
-      </div>
-
-      <div class="section">
-        <div class="card warn">
-          <div class="card-title">⚠️ Error frecuente sin swap</div>
-          <p>El instalador de WebLogic <strong>verifica que exista swap mayor a 512 MB</strong> antes de continuar. Si no hay swap, lanza el error:<br>
-          <code>swap must be greater than 512MB</code></p>
-        </div>
-
-        <div class="card info">
-          <div class="card-title">ℹ️ ¿Qué es Swap?</div>
-          <p>Espacio en disco que el SO usa como <em>extensión de la RAM</em> cuando la memoria física se llena. En producción se configura en un disco SSD dedicado; en laboratorio usamos un archivo swap (swapfile).</p>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-title"><span class="step-num">1</span> Crear y activar swapfile de 1 GB</div>
-        <pre><span class="comment"># fallocate reserva 1 gigabyte de espacio contiguo en disco</span>
-<span class="comment"># -l 1G = longitud igual a 1 gigabyte</span>
-<span class="cmd">sudo fallocate</span> <span class="flag">-l 1G</span> <span class="path">/swapfile</span>
-
-<span class="comment"># Permisos 600 = solo root puede leer/escribir (obligatorio para swap)</span>
-<span class="comment"># chmod 600 = modo: solo propietario tiene lectura y escritura</span>
-<span class="cmd">sudo chmod 600</span> <span class="path">/swapfile</span>
-
-<span class="comment"># Formatear el archivo como área de swap</span>
-<span class="cmd">sudo mkswap</span> <span class="path">/swapfile</span>
-
-<span class="comment"># Activar el swap inmediatamente</span>
-<span class="cmd">sudo swapon</span> <span class="path">/swapfile</span>
-
-<span class="comment"># Verificar que aparece el swap activo</span>
-<span class="cmd">free</span> <span class="flag">-h</span></pre>
-
-        <div class="card ok">
-          <div class="card-title">✅ Salida esperada de free -h</div>
-          <p>Verás una fila <strong>Swap</strong> con total cercano a <code>1.0G</code> y usado en <code>0B</code> (sin usar aún).</p>
-        </div>
-      </div>
-    </section><!-- /swap -->
-
-
-    <!-- ════════════ PAGE: INSTALL ════════════ -->
-    <section class="page" id="page-install">
-      <div class="page-header">
-        <div class="page-tag">Paso 5</div>
-        <div class="page-title">Instalación WebLogic — Silent Mode</div>
-      </div>
-
-      <div class="section">
-        <div class="section-title"><span class="step-num">1</span> Subir instaladores vía SFTP (Termius)</div>
-        <table>
-          <tbody><tr><th>Archivo</th><th>Descripción</th><th>Destino en servidor</th></tr>
-          <tr>
-            <td class="td-cmd">fmw_14.1.2.0.0_wls.jar</td>
-            <td>Instalador WebLogic</td>
-            <td class="td-cmd">/u01/</td>
-          </tr>
-          <tr>
-            <td class="td-cmd">jdk-17_linux-x64_bin.tar.gz</td>
-            <td>Oracle JDK 17</td>
-            <td class="td-cmd">/u01/</td>
-          </tr>
-        </tbody></table>
-      </div>
-
-      <div class="section">
-        <div class="section-title"><span class="step-num">2</span> Instalar JDK 17</div>
-        <pre><span class="comment"># tar = herramienta de archivos comprimidos</span>
-<span class="comment"># -x = extraer, -z = descomprimir gzip, -f = nombre de archivo</span>
-<span class="cmd">tar</span> <span class="flag">-xzf</span> <span class="path">/u01/jdk-17_linux-x64_bin.tar.gz</span></pre>
-      </div>
-
-      <div class="section">
-        <div class="section-title"><span class="step-num">3</span> Crear Response File</div>
-        <div class="card info">
-          <div class="card-title">ℹ️ ¿Qué es un Response File?</div>
-          <p>Archivo de texto que responde <em>automáticamente</em> todas las preguntas del instalador gráfico. Permite instalar en modo <strong>silent</strong> sin GUI, ideal para servidores sin escritorio.</p>
-        </div>
-        <pre><span class="comment"># cat &gt; archivo crea el archivo con el contenido entre EOF...EOF</span>
-<span class="cmd">cat</span> <span class="arg">&gt; /u01/wls.rsp &lt;&lt; 'EOF'</span>
+<section class="page" id="page-wls-install">
+  <div class="page-header"><div class="page-tag">WebLogic / EC2 — Paso 5</div><div class="page-title">Instalación WebLogic — Silent Mode</div></div>
+  <div class="section">
+    <div class="flow">
+      <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content"><div class="flow-title">Subir instaladores vía SFTP</div>
+        <table><tbody><tr><th>Archivo</th><th>Destino</th></tr>
+        <tr><td class="tc">fmw_14.1.2.0.0_wls.jar</td><td class="tc">/u01/</td></tr>
+        <tr><td class="tc">jdk-17_linux-x64_bin.tar.gz</td><td class="tc">/u01/</td></tr></tbody></table>
+      </div></div>
+      <div class="flow-step"><div class="flow-dot">2</div><div class="flow-content"><div class="flow-title">Instalar JDK 17</div><pre><span class="cmd">tar</span> <span class="flag">-xzf</span> <span class="path">/u01/jdk-17_linux-x64_bin.tar.gz</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content"><div class="flow-title">Crear Response File</div><pre><span class="cmd">cat</span> <span class="arg">&gt; /u01/wls.rsp &lt;&lt; 'EOF'</span>
 [ENGINE]
 Response File Version=1.0.0.0
-
 [GENERIC]
-<span class="comment"># Ruta donde se instalará WebLogic (ORACLE_HOME)</span>
 ORACLE_HOME=/u01/app/oracle/middleware
 INSTALL_TYPE=WebLogic Server
-<span class="comment"># No enviar info de seguridad a Oracle durante instalación</span>
 DECLINE_SECURITY_UPDATES=true
-EOF</pre>
-      </div>
-
-      <div class="section">
-        <div class="section-title"><span class="step-num">4</span> Crear Oracle Inventory</div>
-        <div class="card warn">
-          <div class="card-title">⚠️ Primera instalación Oracle en el servidor</div>
-          <p>Oracle necesita un directorio de inventario central para registrar todos sus productos instalados. Sin esto el instalador falla con error de permisos.</p>
-        </div>
-        <pre><span class="cmd">sudo</span> <span class="path">/tmp/createCentralInventory*.sh</span> <span class="arg">/u01/app/oraInventory ec2-user</span></pre>
-      </div>
-
-      <div class="section">
-        <div class="section-title"><span class="step-num">5</span> Resolver error de espacio en /tmp</div>
-        <div class="card warn">
-          <div class="card-title">⚠️ /tmp demasiado pequeño</div>
-          <p>WebLogic extrae archivos temporales en <code>/tmp</code>. En t2.micro el espacio es insuficiente. La solución es redirigir TMPDIR a <code>/u01</code> que tiene más espacio.</p>
-        </div>
-        <pre><span class="comment"># export = crea/modifica variable de entorno para la sesión actual</span>
-<span class="comment"># TMPDIR = le dice a WebLogic dónde guardar sus temporales</span>
-<span class="cmd">export</span> <span class="arg">TMPDIR=/u01</span></pre>
-      </div>
-
-      <div class="section">
-        <div class="section-title"><span class="step-num">6</span> Ejecutar instalación Silent</div>
-        <pre><span class="comment"># Usar el JDK 17 recién extraído (no el sistema)</span>
-<span class="comment"># -jar = ejecutar un archivo JAR como programa</span>
-<span class="comment"># -silent = sin interfaz gráfica</span>
-<span class="comment"># -responseFile = usar nuestro archivo de respuestas</span>
-<span class="comment"># -invPtrLoc = ubicación del inventory Oracle</span>
-<span class="path">/u01/jdk-17*/bin/java</span> <span class="flag">-jar</span> <span class="path">/u01/fmw_14.1.2.0.0_wls.jar</span> \
+EOF</pre></div></div>
+      <div class="flow-step"><div class="flow-dot">4</div><div class="flow-content"><div class="flow-title">Oracle Inventory + TMPDIR</div><pre><span class="cmd">sudo</span> <span class="path">/tmp/createCentralInventory*.sh</span> <span class="arg">/u01/app/oraInventory ec2-user</span>
+<span class="cmd">export</span> <span class="arg">TMPDIR=/u01</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">5</div><div class="flow-content"><div class="flow-title">Silent Install</div><pre><span class="path">/u01/jdk-17*/bin/java</span> <span class="flag">-jar</span> <span class="path">/u01/fmw_14.1.2.0.0_wls.jar</span> \
   <span class="flag">-silent</span> \
   <span class="flag">-responseFile</span> <span class="path">/u01/wls.rsp</span> \
   <span class="flag">-invPtrLoc</span> <span class="path">/etc/oraInst.loc</span></pre>
+        <div class="card ok"><div class="ct">✅ Resultado esperado</div><p><code>installation completed successfully</code></p></div>
+      </div></div>
+    </div>
+  </div>
+</section>
 
-        <div class="card ok">
-          <div class="card-title">✅ Resultado esperado</div>
-          <p><code>installation completed successfully</code></p>
-        </div>
-      </div>
-    </section><!-- /install -->
+<section class="page" id="page-wls-errors">
+  <div class="page-header"><div class="page-tag">WebLogic — Troubleshooting</div><div class="page-title">Errores Comunes y Soluciones</div></div>
+  <div class="section">
+    <table>
+      <tbody><tr><th>Error</th><th>Causa</th><th>Solución</th></tr>
+      <tr><td class="tc">OpenJDK JVM not supported</td><td>Requiere Oracle JDK, no OpenJDK</td><td>Instalar Oracle JDK 17</td></tr>
+      <tr><td class="tc">swap must be greater than 512MB</td><td>t2.micro sin swap</td><td>fallocate + mkswap + swapon</td></tr>
+      <tr><td class="tc">DISPLAY not set</td><td>Sin GUI en el servidor</td><td>Usar flag <code>-silent</code></td></tr>
+      <tr><td class="tc">Insufficient space in /tmp</td><td>/tmp sin espacio</td><td><code>export TMPDIR=/u01</code></td></tr>
+      <tr><td class="tc">permission to create home</td><td>Oracle Inventory faltante</td><td>Ejecutar createCentralInventory.sh</td></tr>
+    </tbody></table>
+    <div class="sec-title" style="margin-top:18px">Checklist pre-instalación</div>
+    <table>
+      <tbody><tr><th>Verificación</th><th>Comando</th><th>Esperado</th></tr>
+      <tr><td>Swap activo</td><td class="tc">free -h</td><td>Swap mayor a 512M</td></tr>
+      <tr><td>Espacio /u01</td><td class="tc">df -h /u01</td><td>Más de 8 GB libres</td></tr>
+      <tr><td>JDK Oracle</td><td class="tc">/u01/jdk-17*/bin/java -version</td><td>Oracle JDK 17</td></tr>
+      <tr><td>TMPDIR</td><td class="tc">echo $TMPDIR</td><td>/u01</td></tr>
+      <tr><td>Inventory</td><td class="tc">ls /u01/app/oraInventory</td><td>Directorio existe</td></tr>
+    </tbody></table>
+  </div>
+</section>
 
+<section class="page" id="page-reason">
+  <div class="page-header"><div class="page-tag">Razonamiento</div><div class="page-title">Cómo Razonar ante una Falla</div></div>
+  <div class="section">
+    <div class="card purple"><div class="ct">📌 Símbolos</div>
+    <p>menor que (&lt;) = el número está por debajo de ese valor<br>mayor que (&gt;) = el número supera ese valor<br>flecha (→) = ENTONCES / POR LO TANTO<br>dividir (÷) = divide el primer número entre el segundo</p></div>
+    <div class="flow">
+      <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content"><div class="flow-title">CPUs — siempre primero</div><pre><span class="cmd">nproc</span>                                   <span class="cm"># Linux</span>
+<span class="cmd">lparstat</span> <span class="flag">-i</span> <span class="flag">|</span> grep <span class="val">'Online Virtual'</span> <span class="cm"># AIX</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">2</div><div class="flow-content"><div class="flow-title">¿Servidor saturado?</div><pre><span class="cmd">uptime</span>
+<span class="cm"># Load ÷ CPUs mayor a 1.5 = saturado → paso 3</span>
+<span class="cm"># Load ÷ CPUs menor a 1   = problema en la app</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content"><div class="flow-title">CPU / Memoria / Disco</div><pre><span class="cm"># id menor a 10% + us mayor a 80% → CPU bound</span>
+<span class="cm"># id alto + wa mayor a 10%        → IO bound</span>
+<span class="cm"># id alto + load alto             → memory pressure</span></pre></div></div>
+      <div class="flow-step"><div class="flow-dot">4</div><div class="flow-content"><div class="flow-title">Confirmar</div><pre><span class="cmd">vmstat</span> <span class="arg">1 5</span></pre></div></div>
+    </div>
+  </div>
+</section>
 
-    <!-- ════════════ PAGE: ERRORS ════════════ -->
-    <section class="page" id="page-errors">
-      <div class="page-header">
-        <div class="page-tag">Troubleshooting</div>
-        <div class="page-title">Errores Comunes y Soluciones</div>
-      </div>
-
-      <div class="section">
-        <table>
-          <tbody><tr>
-            <th style="width:38%">ERROR</th>
-            <th style="width:10%">Estado</th>
-            <th>Causa</th>
-            <th>Solución</th>
-          </tr>
-          <tr>
-            <td class="td-cmd">OpenJDK JVM not supported</td>
-            <td class="td-err">FALLO</td>
-            <td>WebLogic requiere Oracle JDK oficial; OpenJDK (el default de RHEL) no está certificado</td>
-            <td>Descargar e instalar <strong>Oracle JDK 17</strong> manualmente</td>
-          </tr>
-          <tr>
-            <td class="td-cmd">swap must be greater than 512MB</td>
-            <td class="td-err">FALLO</td>
-            <td>La instancia t2.micro no tiene swap por defecto</td>
-            <td>Crear swapfile de 1G con <code>fallocate + mkswap + swapon</code></td>
-          </tr>
-          <tr>
-            <td class="td-cmd">DISPLAY not set</td>
-            <td class="td-err">FALLO</td>
-            <td>El instalador intenta abrir GUI pero no hay servidor X11</td>
-            <td>Usar flag <code>-mode=console</code> o <code>-silent</code></td>
-          </tr>
-          <tr>
-            <td class="td-cmd">Insufficient space in /tmp</td>
-            <td class="td-err">FALLO</td>
-            <td>El instalador extrae archivos en /tmp que está lleno</td>
-            <td>Ejecutar <code>export TMPDIR=/u01</code> antes del instalador</td>
-          </tr>
-          <tr>
-            <td class="td-cmd">User does not have permission to create home</td>
-            <td class="td-err">FALLO</td>
-            <td>Oracle Inventory no fue creado; el instalador no puede registrar el producto</td>
-            <td>Ejecutar <code>createCentralInventory.sh</code> como paso previo</td>
-          </tr>
-        </tbody></table>
-      </div>
-
-      <div class="section">
-        <div class="section-title">Checklist pre-instalación</div>
-        <table>
-          <tbody><tr><th>Verificación</th><th>Comando</th><th>Esperado</th></tr>
-          <tr>
-            <td>Swap activo</td>
-            <td class="td-cmd">free -h</td>
-            <td>Fila Swap mayor a 512M</td>
-          </tr>
-          <tr>
-            <td>Espacio en /u01</td>
-            <td class="td-cmd">df -h /u01</td>
-            <td>Más de 8 GB disponibles</td>
-          </tr>
-          <tr>
-            <td>JDK Oracle instalado</td>
-            <td class="td-cmd">/u01/jdk-17*/bin/java -version</td>
-            <td>Muestra Oracle JDK 17</td>
-          </tr>
-          <tr>
-            <td>TMPDIR configurado</td>
-            <td class="td-cmd">echo $TMPDIR</td>
-            <td>/u01</td>
-          </tr>
-          <tr>
-            <td>Inventory creado</td>
-            <td class="td-cmd">ls /u01/app/oraInventory</td>
-            <td>Directorio existe</td>
-          </tr>
-          <tr>
-            <td>Response file listo</td>
-            <td class="td-cmd">cat /u01/wls.rsp</td>
-            <td>Contiene ORACLE_HOME y INSTALL_TYPE</td>
-          </tr>
-        </tbody></table>
-      </div>
-    </section><!-- /errors -->
+<section class="page" id="page-tipos">
+  <div class="page-header"><div class="page-tag">Razonamiento</div><div class="page-title">Los 3 Tipos de Problema de Rendimiento</div></div>
+  <div class="section">
+    <table>
+      <tbody><tr><th>Tipo</th><th>Síntomas</th><th>Qué falla</th></tr>
+      <tr><td><span class="badge badge-red">CPU Bound</span></td><td>id menor a 5% + us mayor a 80%</td><td>Procesador saturado</td></tr>
+      <tr><td><span class="badge badge-yellow">Memory Pressure</span></td><td>id alto + swap creciendo</td><td>Falta RAM, usando disco</td></tr>
+      <tr><td><span class="badge badge-blue">IO Bound</span></td><td>id alto + wa mayor a 10%</td><td>Disco saturado</td></tr>
+    </tbody></table>
+    <table style="margin-top:14px">
+      <tbody><tr><th>Lo que ves</th><th>id%</th><th>wa%</th><th>swap</th><th>Diagnóstico</th></tr>
+      <tr><td>Load alto</td><td class="terr">menor a 5%</td><td>normal</td><td>estable</td><td>CPU Bound</td></tr>
+      <tr><td>Load alto, CPU libre</td><td class="tok">mayor a 60%</td><td class="terr">mayor a 10%</td><td>estable</td><td>IO Bound</td></tr>
+      <tr><td>Load alto, CPU libre</td><td class="tok">mayor a 60%</td><td>normal</td><td class="terr">creciendo</td><td>Memory Pressure</td></tr>
+      <tr><td>Load normal, app lenta</td><td class="tok">normal</td><td>normal</td><td>estable</td><td>Problema en la app</td></tr>
+    </tbody></table>
+  </div>
+</section>
 
 
-    <!-- ════════════ PAGE: GLOSSARY ════════════ -->
-    <section class="page" id="page-glossary">
-      <div class="page-header">
-        <div class="page-tag">Referencia</div>
-        <div class="page-title">Glosario Técnico</div>
-      </div>
-      <div class="section">
-        <div class="glossary-item">
-          <div class="glossary-term">LVM</div>
-          <div class="glossary-def"><strong>Logical Volume Manager</strong> — Capa de abstracción entre discos físicos y el sistema de archivos. Permite crear, redimensionar y mover volúmenes sin desmontar discos ni reiniciar.</div>
-        </div>
-        <div class="glossary-item">
-          <div class="glossary-term">PV</div>
-          <div class="glossary-def"><strong>Physical Volume</strong> — Un disco o partición inicializada para LVM. Analogía: ladrillo crudo.</div>
-        </div>
-        <div class="glossary-item">
-          <div class="glossary-term">VG</div>
-          <div class="glossary-def"><strong>Volume Group</strong> — Agrupación de uno o más PVs. Analogía: pared construida con los ladrillos PV.</div>
-        </div>
-        <div class="glossary-item">
-          <div class="glossary-term">LV</div>
-          <div class="glossary-def"><strong>Logical Volume</strong> — Partición virtual creada desde el VG. Analogía: habitación dentro de la pared.</div>
-        </div>
-        <div class="glossary-item">
-          <div class="glossary-term">XFS</div>
-          <div class="glossary-def">Sistema de archivos de alto rendimiento para cargas de trabajo intensivas. Predeterminado en RHEL desde versión 7. Soporta archivos de hasta 8 exabytes.</div>
-        </div>
-        <div class="glossary-item">
-          <div class="glossary-term">Swap</div>
-          <div class="glossary-def">Espacio en disco usado como extensión de RAM. El kernel mueve páginas de memoria inactivas al swap para liberar RAM física.</div>
-        </div>
-        <div class="glossary-item">
-          <div class="glossary-term">fstab</div>
-          <div class="glossary-def"><strong>/etc/fstab</strong> — Tabla de sistemas de archivos. Define qué discos se montan automáticamente al iniciar el sistema operativo.</div>
-        </div>
-        <div class="glossary-item">
-          <div class="glossary-term">UUID</div>
-          <div class="glossary-def"><strong>Universally Unique Identifier</strong> — Identificador único asignado a cada filesystem al formatearlo. Más confiable que /dev/sdX porque no cambia al reiniciar.</div>
-        </div>
-        <div class="glossary-item">
-          <div class="glossary-term">Silent Install</div>
-          <div class="glossary-def">Modo de instalación sin interfaz gráfica, dirigido por un archivo de respuestas (.rsp). Fundamental en servidores sin entorno de escritorio.</div>
-        </div>
-        <div class="glossary-item">
-          <div class="glossary-term">ORACLE_HOME</div>
-          <div class="glossary-def">Variable de entorno y directorio donde se instala el software Oracle (WebLogic, DB, etc.). Por convención suele ser <code>/u01/app/oracle/middleware</code>.</div>
-        </div>
-        <div class="glossary-item">
-          <div class="glossary-term">User Data (EC2)</div>
-          <div class="glossary-def">Script que Amazon EC2 ejecuta automáticamente durante el primer arranque de la instancia. Sirve para instalar software o configurar el SO sin intervención manual.</div>
-        </div>
-        <div class="glossary-item">
-          <div class="glossary-term">TMPDIR</div>
-          <div class="glossary-def">Variable de entorno que le dice a las aplicaciones dónde crear archivos temporales. Por defecto apunta a <code>/tmp</code>; se puede redirigir a un disco con más espacio.</div>
-        </div>
-        <div class="glossary-item">
-          <div class="glossary-term">blkid</div>
-          <div class="glossary-def">Comando que muestra el UUID y tipo de cada dispositivo de bloque (disco/volumen) del sistema. Se usa para configurar fstab.</div>
-        </div>
-        <div class="glossary-item">
-          <div class="glossary-term">fallocate</div>
-          <div class="glossary-def">Reserva espacio en disco de forma instantánea sin escribir ceros. Más rápido que <code>dd</code> para crear swapfiles.</div>
-        </div>
-      </div>
-    </section><!-- /glossary -->
+<section class="page" id="page-iostat">
+  <div class="page-header">
+    <div class="page-tag">Storage / IO — Análisis SRE</div>
+    <div class="page-title">iostat — Lectura Correcta en Producción</div>
+    <div class="page-sub">Cómo interpreta un SRE cada campo de iostat -x</div>
+  </div>
+  <div class="section">
+    <div class="sec-title"><span class="snum">1</span>Comando y salida típica</div>
+    <pre><span class="cmd">iostat</span> <span class="flag">-x</span> <span class="arg">1</span>
+<span class="cm"># -x = estadísticas extendidas</span>
+<span class="cm"># 1  = refresco cada segundo</span></pre>
+    <pre>Device   r/s   w/s  rkB/s  wkB/s  await  svctm  %util
+sda      2.1  45.3   32     812    48.6   4.1    89.3</pre>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><span class="snum">2</span>Desglose de campos</div>
+    <table>
+      <tbody><tr><th>Campo</th><th>Nombre</th><th>Ejemplo</th><th>Interpretación</th></tr>
+      <tr><td class="tc">r/s</td><td>Lecturas por segundo</td><td class="tc">2.1</td><td>Pocas lecturas — workload no intensivo en lectura</td></tr>
+      <tr><td class="tc">w/s</td><td>Escrituras por segundo</td><td class="tc">45.3</td><td>45 escrituras/seg — logs, auditoría, sesiones, caché</td></tr>
+      <tr><td class="tc">rkB/s</td><td>Throughput lectura</td><td class="tc">32 KB/s</td><td>Lectura muy baja</td></tr>
+      <tr><td class="tc">wkB/s</td><td>Throughput escritura</td><td class="tc">812 KB/s</td><td>Escritura dominante — workload orientado a escritura</td></tr>
+      <tr><td class="tc">await</td><td>Tiempo de espera total IO</td><td class="tc">48.6 ms</td><td>Tiempo promedio por operación (cola + servicio)</td></tr>
+      <tr><td class="tc">svctm</td><td>Tiempo de servicio real</td><td class="tc">4.1 ms</td><td>Tiempo físico del disco procesando la operación</td></tr>
+      <tr><td class="tc">%util</td><td>Utilización del disco</td><td class="tc">89.3%</td><td>Disco ocupado el 89% del tiempo</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><span class="snum">3</span>await — El campo más importante</div>
+    <div class="card info"><div class="ct">ℹ️ Qué mide await</div>
+    <p>Tiempo promedio que tarda una operación de IO. Incluye: <strong>tiempo en cola</strong> + <strong>tiempo de servicio del disco</strong>.</p></div>
+    <table>
+      <tbody><tr><th>await</th><th>Interpretación</th></tr>
+      <tr><td class="tc">menor a 5 ms</td><td class="tok">Excelente</td></tr>
+      <tr><td class="tc">5 – 10 ms</td><td class="tok">Normal</td></tr>
+      <tr><td class="tc">10 – 20 ms</td><td class="twarn">Aceptable</td></tr>
+      <tr><td class="tc">mayor a 20 ms</td><td class="terr">Alerta</td></tr>
+      <tr><td class="tc">mayor a 50 ms</td><td class="terr">Problema serio</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><span class="snum">4</span>Relación await vs svctm — Pregunta clásica de entrevista</div>
+    <div class="card warn">
+      <div class="ct">⚠️ Comparar siempre await contra svctm</div>
+      <p>
+        <code>await = tiempo en cola + tiempo de servicio</code><br><br>
+        Ejemplo del laboratorio:<br>
+        <code>await = 48 ms</code> &nbsp;|&nbsp; <code>svctm = 4 ms</code><br><br>
+        <strong>Conclusión:</strong> El disco físicamente NO es lento (svctm bajo). El problema es la <strong>cola de requests</strong> esperando turno para usar el disco.
+      </p>
+    </div>
+    <div class="mnemonic">
+      <div class="mn-title">🧠 Regla await vs svctm</div>
+      <p>
+        <span class="key">await bajo + svctm bajo</span> → disco saludable<br>
+        <span class="key">await alto + svctm bajo</span> → cola de espera, muchas operaciones compitiendo<br>
+        <span class="key">await alto + svctm alto</span> → disco físicamente lento (hardware degradado)
+      </p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><span class="snum">5</span>%util — Utilización del disco</div>
+    <table>
+      <tbody><tr><th>%util</th><th>Interpretación</th></tr>
+      <tr><td class="tc">menor a 50%</td><td class="tok">Normal</td></tr>
+      <tr><td class="tc">50 – 70%</td><td class="twarn">Carga moderada</td></tr>
+      <tr><td class="tc">70 – 85%</td><td class="twarn">Alto — monitorear</td></tr>
+      <tr><td class="tc">mayor a 85%</td><td class="terr">Saturación cercana</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><span class="snum">6</span>Lectura completa SRE — Correlación</div>
+    <div class="card ok">
+      <div class="ct">✅ Ejemplo del laboratorio — lectura completa</div>
+      <p>
+        <code>w/s = 45</code> → muchas escrituras<br>
+        <code>await = 48 ms</code> → tiempo de espera alto<br>
+        <code>svctm = 4 ms</code> → disco físico OK<br>
+        <code>%util = 89%</code> → disco muy ocupado<br><br>
+        <strong>Diagnóstico:</strong> Hay una <strong>cola de operaciones de escritura</strong>. El disco no es lento, pero está saturado de requests. Esto explica el <code>wa</code> alto que ves en vmstat.
+      </p>
+    </div>
+    <div class="card info">
+      <div class="ct">ℹ️ Pregunta de entrevista — respuesta</div>
+      <p>Si ves <strong>await alto + svctm bajo + %util alto</strong>:<br>
+      El disco no tiene falla de hardware. El problema es <strong>saturación por volumen de operaciones</strong> — demasiadas escrituras compitiendo al mismo tiempo. Solución: revisar qué proceso genera tantas escrituras (<code>iotop</code> o <code>lsof</code>), evaluar agregar disco más rápido (SSD/NVMe) o redistribuir carga.</p>
+    </div>
+  </div>
+</section>
+
+<section class="page" id="page-sre-corr">
+  <div class="page-header">
+    <div class="page-tag">Storage / IO — Razonamiento SRE</div>
+    <div class="page-title">Correlación: top + vmstat + free</div>
+    <div class="page-sub">Cómo un SRE conecta las tres herramientas para llegar al diagnóstico correcto</div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><span class="snum">1</span>top — Salida de referencia</div>
+    <pre>top - 10:22:31 up 12 days, 3:21, 2 users, load average: 2.14, 2.01, 1.89
+Tasks: 256 total,  3 running, 253 sleeping
+<span class="arg">%Cpu(s): 22 us, 6 sy, 60 id, 10 wa</span>
+MiB Mem : 16000 total, 2400 free, 8000 used, 5600 buff/cache
+MiB Swap:  4096 total, 4096 free,    0 used</pre>
+    <table>
+      <tbody><tr><th>Métrica</th><th>Valor</th><th>Interpretación</th></tr>
+      <tr><td>Load Average</td><td class="tc">2.14, 2.01, 1.89</td><td>Estable — tendencia plana (no empeorando)</td></tr>
+      <tr><td class="tc">us</td><td>22%</td><td>Aplicaciones consumiendo CPU — moderado</td></tr>
+      <tr><td class="tc">id</td><td>60%</td><td>CPU tiene capacidad disponible — NO es CPU bound</td></tr>
+      <tr><td class="tc">wa</td><td class="twarn">10%</td><td>CPU esperando disco — señal de IO bound</td></tr>
+      <tr><td>Swap used</td><td class="tok">0</td><td>Sin memory pressure</td></tr>
+    </tbody></table>
+    <div class="card info"><div class="ct">ℹ️ buff/cache en Memoria</div>
+    <p>El valor <code>5600 buff/cache</code> es <strong>normal en Linux</strong>. El SO usa RAM libre como caché de filesystem para acelerar accesos. No es un problema. El indicador real es <code>available</code>.</p></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><span class="snum">2</span>vmstat — Salida de referencia</div>
+    <pre><span class="cm"> r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa</span>
+ 3  1      0  842000  91200 430000    0    0    14    42  520  690 21  7 60 12</pre>
+    <table>
+      <tbody><tr><th>Campo</th><th>Valor</th><th>Interpretación</th></tr>
+      <tr><td class="tc">r = 3</td><td>Procesos esperando CPU</td><td class="twarn">Mayor que CPUs — revisar</td></tr>
+      <tr><td class="tc">b = 1</td><td>Procesos bloqueados</td><td class="twarn">Hay proceso esperando disco/NFS</td></tr>
+      <tr><td class="tc">si = 0, so = 0</td><td>Sin swap activity</td><td class="tok">Memoria OK</td></tr>
+      <tr><td class="tc">bo = 42</td><td>Escrituras a disco</td><td class="twarn">Hay actividad de escritura</td></tr>
+      <tr><td class="tc">wa = 12</td><td>CPU esperando IO</td><td class="terr">Confirma IO bound</td></tr>
+    </tbody></table>
+    <div class="card warn"><div class="ct">⚠️ b mayor a 0 — qué significa</div>
+    <p>Procesos en estado bloqueado normalmente esperan disco, filesystem o NFS. Si <code>b</code> es constante y mayor a 0, correlacionar con <code>iostat</code> para identificar el dispositivo.</p></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><span class="snum">3</span>free — Salida de referencia</div>
+    <pre><span class="cm">             total  used  free  shared  buff/cache  available</span>
+Mem:         16000  8200  2400   200     5400        6900
+Swap:         4096     0  4096</pre>
+    <table>
+      <tbody><tr><th>Campo</th><th>Valor</th><th>Interpretación</th></tr>
+      <tr><td class="tc">used</td><td>8200 MB</td><td>Memoria usada por procesos</td></tr>
+      <tr><td class="tc">buff/cache</td><td>5400 MB</td><td>Caché del sistema — normal, no es problema</td></tr>
+      <tr><td class="tc">available</td><td class="tok">6900 MB</td><td>Memoria real disponible — saludable</td></tr>
+      <tr><td class="tc">Swap used</td><td class="tok">0</td><td>Sin memory pressure</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><span class="snum">4</span>Correlación completa — Diagnóstico final</div>
+    <div class="card ok">
+      <div class="ct">✅ Lectura SRE — las 3 herramientas juntas</div>
+      <p>
+        <strong>top:</strong> wa = 10%, id = 60% → CPU no saturada, pero esperando disco<br>
+        <strong>vmstat:</strong> b = 1, bo alto, wa = 12 → proceso bloqueado, escrituras activas<br>
+        <strong>free:</strong> swap = 0, available alto → memoria OK<br><br>
+        <strong>Diagnóstico:</strong> El problema es <strong>IO</strong>. CPU y memoria están bien. El cuello de botella es el disco. Siguiente paso: ejecutar <code>iostat -x 1</code> para identificar el dispositivo y confirmar con <code>await</code> y <code>%util</code>.
+      </p>
+    </div>
+
+    <div class="mnemonic">
+      <div class="mn-title">🧠 Orden mental SRE para cualquier incidente</div>
+      <p>
+        <span class="key">1. CPU</span> → top: id bajo + us alto = CPU bound<br>
+        <span class="key">2. Memoria</span> → free: swap creciendo = memory pressure<br>
+        <span class="key">3. IO</span> → vmstat: wa alto + b alto = IO bound<br>
+        <span class="key">4. Filesystem</span> → df -h: disco lleno = app no puede escribir<br>
+        <span class="key">5. Aplicación</span> → si todo lo anterior está OK, el problema es la app<br><br>
+        Siempre en ese orden. Nunca escales sin haber descartado los anteriores.
+      </p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><span class="snum">5</span>Resumen de procesos en top</div>
+    <pre><span class="cm">PID  USER  PR  NI  VIRT   RES   SHR  S  %CPU  %MEM  TIME+   COMMAND</span></pre>
+    <table>
+      <tbody><tr><th>Campo</th><th>Significado</th><th>Cuándo alertar</th></tr>
+      <tr><td class="tc">RES</td><td>Memoria real usada por el proceso</td><td>Proceso Java con RES muy alto</td></tr>
+      <tr><td class="tc">%CPU</td><td>CPU consumida por el proceso</td><td>Proceso acaparando más del 80%</td></tr>
+      <tr><td class="tc">S</td><td>Estado: R=running D=bloqueado S=sleeping</td><td>Varios procesos en D = IO bound</td></tr>
+      <tr><td class="tc">COMMAND</td><td>Nombre del proceso</td><td>java, oracle, node, mysqld</td></tr>
+    </tbody></table>
+  </div>
+</section>
 
 
-    <!-- ════════════ PAGE: MNEMONIC ════════════ -->
-    <section class="page" id="page-mnemonic">
-      <div class="page-header">
-        <div class="page-tag">Memoria Técnica</div>
-        <div class="page-title">Reglas Mnemotécnicas</div>
-      </div>
+<section class="page" id="page-df-du">
+  <div class="page-header">
+    <div class="page-tag">Storage / IO — Disco Lleno</div>
+    <div class="page-title">df vs du — Diferencia Crítica</div>
+    <div class="page-sub">Confusión común incluso entre ingenieros con experiencia</div>
+  </div>
 
-      <div class="section">
-        <div class="mnemonic">
-          <div class="mnemonic-title">🧠 Orden LVM — "PVerde, VGrande, LVive"</div>
-          <p>
-            <span class="key">P</span>V verde → <code>pvcreate</code> (prepara el disco)<br>
-            <span class="key">V</span>G grande → <code>vgcreate</code> (agrupa los discos)<br>
-            <span class="key">L</span>V vive → <code>lvcreate</code> (crea la partición virtual)
-          </p>
-          <p style="margin-top:8px; color: var(--text-dim); font-size:12px;">Recuerda: Primero Physical, luego Virtual Group, luego Logical.</p>
-        </div>
+  <div class="section">
+    <div class="card info"><div class="ct">ℹ️ La diferencia clave</div>
+    <p>
+      <strong>df</strong> (disk filesystem) → muestra la capacidad del <strong>filesystem completo</strong>: espacio usado, libre, inodes.<br>
+      <strong>du</strong> (disk usage) → muestra cuánto consumen <strong>directorios o archivos específicos</strong>.
+    </p></div>
 
-        <div class="mnemonic">
-          <div class="mnemonic-title">🧠 SWAP — "FALTO CHMOD MKSWAP SWAPON"</div>
-          <p>
-            <span class="key">FAL</span>locate → reserva espacio<br>
-            <span class="key">CH</span>mod 600 → asegura permisos<br>
-            <span class="key">MK</span>swap → formatea como swap<br>
-            <span class="key">SWAP</span>on → activa
-          </p>
-          <p style="margin-top:8px; color: var(--text-dim); font-size:12px;">Frase: <em>"Fal-Ch-Mk-On"</em> — como encender un motor en 4 pasos.</p>
-        </div>
+    <table>
+      <tbody><tr><th>Comando</th><th>Responde a</th><th>Cuándo usarlo</th></tr>
+      <tr><td class="tc">df -h</td><td>¿Qué filesystem está lleno?</td><td>Primera revisión siempre</td></tr>
+      <tr><td class="tc">df -i</td><td>¿Se agotaron los inodes?</td><td>df -h muestra espacio libre pero app falla al crear archivos</td></tr>
+      <tr><td class="tc">du -sh /ruta/*</td><td>¿Qué directorio está creciendo?</td><td>Después de confirmar filesystem lleno con df</td></tr>
+    </tbody></table>
+  </div>
 
-        <div class="mnemonic">
-          <div class="mnemonic-title">🧠 Errores WebLogic — "JDST–Display"</div>
-          <p>
-            <span class="key">J</span>DK → Necesitas Oracle JDK 17, no OpenJDK<br>
-            <span class="key">D</span>isco /tmp → export TMPDIR antes de instalar<br>
-            <span class="key">S</span>wap → mayor a 512 MB siempre<br>
-            <span class="key">T</span>inventory → crear Oracle Inventory primero<br>
-            <span class="key">Display</span> → usar -silent si no hay pantalla
-          </p>
-        </div>
+  <div class="section">
+    <div class="sec-title"><span class="snum">1</span>Flujo de troubleshooting — Disco lleno</div>
+    <div class="flow">
+      <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content">
+        <div class="flow-title">Ver si el filesystem está lleno</div>
+        <pre><span class="cmd">df</span> <span class="flag">-h</span>
+<span class="cm"># Buscar columna Use% en 90%+ o 100%</span></pre>
+      </div></div>
+      <div class="flow-step"><div class="flow-dot">2</div><div class="flow-content">
+        <div class="flow-title">Ver si los inodes están agotados</div>
+        <pre><span class="cmd">df</span> <span class="flag">-i</span>
+<span class="cm"># IUse% al 100% = no se pueden crear archivos nuevos</span>
+<span class="cm"># aunque haya espacio en disco disponible</span></pre>
+        <div class="card warn"><div class="ct">⚠️ Trampa de inodes</div>
+        <p>El filesystem puede tener espacio libre pero si los <strong>inodes están al 100%</strong>, la aplicación falla al crear archivos con errores como <code>No space left on device</code>. Siempre verificar con <code>df -i</code>.</p></div>
+      </div></div>
+      <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content">
+        <div class="flow-title">Encontrar qué directorio está creciendo</div>
+        <pre><span class="cm"># -s = resumen | -h = human readable | * = todos los subdirectorios</span>
+<span class="cmd">du</span> <span class="flag">-sh</span> <span class="path">/u01/weblogic/*</span>
 
-        <div class="mnemonic">
-          <div class="mnemonic-title">🧠 Comandos de diagnóstico — "BDF + LS + FREE"</div>
-          <p>
-            <span class="key">B</span>lkid → ver UUID de discos<br>
-            <span class="key">D</span>f -h → espacio en disco montado<br>
-            <span class="key">F</span>ree -h → RAM y Swap<br>
-            <span class="key">LS</span>blk → árbol de discos<br>
-            <span class="key">LS</span>of → archivos abiertos por proceso
-          </p>
-          <p style="margin-top:8px; color: var(--text-dim); font-size:12px;">Ante cualquier duda en infraestructura, ejecuta estos 5 antes de escalar.</p>
-        </div>
+<span class="cm"># Ordenar de mayor a menor para encontrar el culpable</span>
+<span class="cmd">du</span> <span class="flag">-sh</span> <span class="path">/u01/*</span> <span class="flag">|</span> <span class="cmd">sort</span> <span class="flag">-rh</span> <span class="flag">|</span> head <span class="flag">-10</span></pre>
+      </div></div>
+    </div>
+  </div>
 
-        <div class="mnemonic">
-          <div class="mnemonic-title">🧠 fstab — columnas en orden</div>
-          <p>
-            <span class="key">U</span>UID → identificador del volumen<br>
-            <span class="key">M</span>ount point → /u01 o /logs<br>
-            <span class="key">T</span>ipo → xfs<br>
-            <span class="key">O</span>pciones → defaults<br>
-            <span class="key">D</span>ump → 0 (sin backup)<br>
-            <span class="key">P</span>ass → 0 (sin fsck)
-          </p>
-          <p style="margin-top:8px; color: var(--text-dim); font-size:12px;">Nemónico: <em>"UUID Monta Tipo, Options, Dump Pass"</em></p>
-        </div>
-      </div>
-    </section><!-- /mnemonic -->
+  <div class="section">
+    <div class="sec-title"><span class="snum">2</span>Causas comunes en servidores WebLogic / Java</div>
+    <table>
+      <tbody><tr><th>Directorio</th><th>Qué acumula</th><th>Acción</th></tr>
+      <tr><td class="tc">/u01/weblogic/logs</td><td>Logs de aplicación y servidor</td><td>Rotar o archivar logs viejos</td></tr>
+      <tr><td class="tc">/tmp o TMPDIR</td><td>Archivos temporales de JVM</td><td>Limpiar temporales y verificar TMPDIR</td></tr>
+      <tr><td class="tc">/u01/domains/*/servers/*/logs</td><td>Logs del dominio WebLogic</td><td>Configurar log rotation en la consola WLS</td></tr>
+      <tr><td class="tc">/var/log</td><td>Logs del SO y auditoría</td><td>Revisar journald y rotar con logrotate</td></tr>
+    </tbody></table>
+  </div>
 
-
-    <!-- ════════════ PAGE: TIMELINE ════════════ -->
-    <section class="page visible" id="page-timeline">
-      <div class="page-header">
-        <div class="page-tag">Planificación</div>
-        <div class="page-title">Timeline — 40 Minutos</div>
-      </div>
-
-      <div class="section">
-        <div class="timeline">
-          <div class="tl-item">
-            <div class="tl-dot">1</div>
-            <div class="tl-content">
-              <div class="tl-title">🖥️ EC2 — Crear instancia &nbsp;<code style="font-size:11px; color:var(--accent2)">5 min</code></div>
-              <div class="tl-sub">Seleccionar RHEL 9 · t2.micro · Agregar 2 discos adicionales · Security Group SSH · Pegar User Data script</div>
-            </div>
-          </div>
-          <div class="tl-item">
-            <div class="tl-dot">2</div>
-            <div class="tl-content">
-              <div class="tl-title">💾 LVM — Crear volúmenes &nbsp;<code style="font-size:11px; color:var(--accent2)">5 min</code></div>
-              <div class="tl-sub">pvcreate → vgcreate → lvcreate (lv_domain 12G + lv_log 8G) → mkfs.xfs → mount → fstab</div>
-            </div>
-          </div>
-          <div class="tl-item">
-            <div class="tl-dot">3</div>
-            <div class="tl-content">
-              <div class="tl-title">☕ JDK — Instalar Oracle JDK 17 &nbsp;<code style="font-size:11px; color:var(--accent2)">5 min</code></div>
-              <div class="tl-sub">Subir tar.gz vía SFTP → tar -xzf → Verificar versión con java -version</div>
-            </div>
-          </div>
-          <div class="tl-item">
-            <div class="tl-dot">4</div>
-            <div class="tl-content">
-              <div class="tl-title">📦 Upload — Subir instalador WebLogic &nbsp;<code style="font-size:11px; color:var(--accent2)">10 min</code></div>
-              <div class="tl-sub">Transferir fmw_14.1.2.0.0_wls.jar vía Termius SFTP a /u01/ · Verificar con ls -lh /u01/</div>
-            </div>
-          </div>
-          <div class="tl-item">
-            <div class="tl-dot">5</div>
-            <div class="tl-content">
-              <div class="tl-title">⚙️ WebLogic Silent Install &nbsp;<code style="font-size:11px; color:var(--accent2)">10 min</code></div>
-              <div class="tl-sub">Crear swap → export TMPDIR → crear response file → createCentralInventory → java -jar -silent -responseFile</div>
-            </div>
-          </div>
-        </div>
-
-        <div style="margin-top:28px;">
-          <table>
-            <tbody><tr><th>Etapa</th><th>Tiempo</th><th>Riesgo principal</th></tr>
-            <tr><td>EC2</td><td>5 min</td><td>Olvidar discos adicionales</td></tr>
-            <tr><td>LVM</td><td>5 min</td><td>Orden incorrecto PV-VG-LV</td></tr>
-            <tr><td>Java</td><td>5 min</td><td>Usar OpenJDK en vez de Oracle JDK</td></tr>
-            <tr><td>Upload</td><td>10 min</td><td>Velocidad de internet / SFTP</td></tr>
-            <tr><td>Instalar WLS</td><td>10 min</td><td>Falta de swap o TMPDIR</td></tr>
-            <tr><td><strong>Total</strong></td><td><strong>~40 min</strong></td><td></td></tr>
-          </tbody></table>
-        </div>
-
-        <div class="card ok" style="margin-top:24px;">
-          <div class="card-title">🏆 Lo que dominaste hoy</div>
-          <ul>
-            <li>LVM en producción real (PV → VG → LV)</li>
-            <li>Gestión de swap en Linux</li>
-            <li>Oracle Inventory y structure</li>
-            <li>Silent install de middleware enterprise</li>
-            <li>Troubleshooting de instalador (5 errores resueltos)</li>
-          </ul>
-        </div>
-      </div>
-    </section><!-- /timeline -->
-
-  </main><!-- /content -->
-</div><!-- /layout -->
+  <div class="section">
+    <div class="mnemonic">
+      <div class="mn-title">🧠 df vs du — "df = Foto del disco | du = Detective de directorios"</div>
+      <p>
+        <span class="key">df</span> te dice <em>QUÉ filesystem está lleno</em> — visión global<br>
+        <span class="key">du</span> te dice <em>QUIÉN lo está llenando</em> — visión forense<br><br>
+        Flujo: <span class="key">df -h</span> (¿lleno?) → <span class="key">df -i</span> (¿inodes?) → <span class="key">du -sh /ruta/* | sort -rh</span> (¿quién?)
+      </p>
+    </div>
+  </div>
+</section>
 
 
+<section class="page" id="page-ps-aux">
+  <div class="page-header">
+    <div class="page-tag">Storage / IO — Procesos</div>
+    <div class="page-title">ps aux — Estado de Procesos</div>
+    <div class="page-sub">Ver todos los procesos, ordenar por CPU o Memoria e identificar al culpable</div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><span class="snum">1</span>Comando base y sus flags</div>
+    <pre><span class="cmd">ps aux</span>
+<span class="cm"># a = todos los usuarios</span>
+<span class="cm"># u = formato orientado al usuario (muestra %CPU, %MEM, USER)</span>
+<span class="cm"># x = incluye procesos sin terminal (daemons, servicios)</span></pre>
+
+    <div class="card info"><div class="ct">ℹ️ Diferencia con top</div>
+    <p><code>top</code> muestra procesos en <strong>tiempo real</strong> actualizándose. <code>ps aux</code> toma una <strong>foto instantánea</strong> del momento — útil para scripting y para enviar evidencia en un incidente.</p></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><span class="snum">2</span>Columnas de ps aux</div>
+    <pre><span class="cm">USER    PID  %CPU  %MEM   VSZ    RSS  TTY  STAT  START   TIME  COMMAND</span>
+root    1234  89.0   4.2  2048M  680M  ?    R     10:01  45:12  java -jar app.jar</pre>
+    <table>
+      <tbody><tr><th>Columna</th><th>Nombre</th><th>Qué mide</th><th>Alerta cuando</th></tr>
+      <tr><td class="tc">%CPU</td><td>CPU usage</td><td>Porcentaje de CPU consumido</td><td class="terr">mayor a 80% en un solo proceso</td></tr>
+      <tr><td class="tc">%MEM</td><td>Memory usage</td><td>Porcentaje de RAM física usada</td><td class="terr">mayor a 20-30% en un proceso</td></tr>
+      <tr><td class="tc">VSZ</td><td>Virtual Size</td><td>Memoria virtual total reservada</td><td>Solo referencia — no es RAM real</td></tr>
+      <tr><td class="tc">RSS</td><td>Resident Set Size</td><td>Memoria RAM física real usada</td><td class="terr">RSS alto = proceso usando RAM real</td></tr>
+      <tr><td class="tc">STAT</td><td>Estado del proceso</td><td>Ver tabla de estados abajo</td><td class="terr">D = bloqueado en IO</td></tr>
+      <tr><td class="tc">TIME</td><td>CPU time acumulado</td><td>Tiempo total de CPU consumido</td><td class="twarn">Valor muy alto = proceso antiguo o runaway</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><span class="snum">3</span>Estados STAT — columna más importante</div>
+    <table>
+      <tbody><tr><th>Estado</th><th>Nombre</th><th>Significa</th><th>Acción</th></tr>
+      <tr><td class="tc">R</td><td>Running</td><td>Proceso ejecutándose o en cola de CPU</td><td class="tok">Normal</td></tr>
+      <tr><td class="tc">S</td><td>Sleeping</td><td>Esperando un evento (interruptible)</td><td class="tok">Normal</td></tr>
+      <tr><td class="tc">D</td><td>Disk wait</td><td>Bloqueado esperando IO — no se puede matar con kill normal</td><td class="terr">Investigar disco</td></tr>
+      <tr><td class="tc">Z</td><td>Zombie</td><td>Proceso terminado pero no recogido por su padre</td><td class="twarn">Revisar proceso padre</td></tr>
+      <tr><td class="tc">T</td><td>Stopped</td><td>Proceso detenido (Ctrl+Z o señal)</td><td class="twarn">Verificar si es intencional</td></tr>
+    </tbody></table>
+    <div class="card warn"><div class="ct">⚠️ Estado D — señal de IO bound</div>
+    <p>Si ves varios procesos en estado <code>D</code> simultáneamente, es confirmación directa de <strong>IO bound</strong>. El disco está tan lento que los procesos no pueden continuar. Correlacionar con <code>iostat -x 1</code>.</p></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><span class="snum">4</span>Ordenar por CPU y Memoria</div>
+    <div class="cl">Procesos que más CPU consumen</div>
+    <pre><span class="cmd">ps aux</span> <span class="flag">--sort</span>=<span class="arg">-%cpu</span> <span class="flag">|</span> head
+<span class="cm"># --sort=-%cpu = ordena de MAYOR a MENOR por %CPU</span>
+<span class="cm"># head = muestra solo los primeros 10</span></pre>
+
+    <div class="cl">Procesos que más Memoria consumen</div>
+    <pre><span class="cmd">ps aux</span> <span class="flag">--sort</span>=<span class="arg">-%mem</span> <span class="flag">|</span> head
+<span class="cm"># --sort=-%mem = ordena de MAYOR a MENOR por %MEM</span>
+<span class="cm"># El signo - antes del campo = orden descendente (mayor primero)</span></pre>
+
+    <div class="card info"><div class="ct">ℹ️ El signo menos en --sort</div>
+    <p>En <code>--sort</code> el signo <strong>menos (–)</strong> antes del nombre del campo significa <strong>orden descendente</strong> — del mayor al menor. Sin el menos, ordena ascendente (menor primero, no útil para encontrar el culpable).</p></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title"><span class="snum">5</span>Comandos complementarios</div>
+    <pre><span class="cm"># Ver proceso específico por nombre</span>
+<span class="cmd">ps aux</span> <span class="flag">|</span> grep <span class="arg">java</span>
+
+<span class="cm"># Ver procesos de un usuario</span>
+<span class="cmd">ps aux</span> <span class="flag">|</span> grep <span class="arg">oracle</span>
+
+<span class="cm"># Ver todos los hilos de un proceso (PID)</span>
+<span class="cmd">ps</span> <span class="flag">-eLf</span> <span class="flag">|</span> grep <span class="arg">PID</span>
+
+<span class="cm"># Ver árbol de procesos padre/hijo</span>
+<span class="cmd">pstree</span> <span class="flag">-p</span> <span class="arg">PID</span></pre>
+
+    <div class="mnemonic">
+      <div class="mn-title">🧠 ps aux — "Foto, Ordena, Actúa"</div>
+      <p>
+        <span class="key">ps aux</span> = foto instantánea de todos los procesos<br>
+        <span class="key">--sort=-%cpu</span> = ¿quién consume más CPU?<br>
+        <span class="key">--sort=-%mem</span> = ¿quién consume más RAM?<br>
+        <span class="key">STAT = D</span> = proceso bloqueado en disco → IO bound confirmado<br><br>
+        Regla: <em>top para tiempo real · ps aux para evidencia y scripting</em>
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="page" id="page-glossary">
+  <div class="page-header"><div class="page-tag">Referencia</div><div class="page-title">Glosario Técnico</div></div>
+  <div class="section">
+    <div class="gitem"><div class="gterm">Load Average</div><div class="gdef">Promedio de procesos ejecutándose o esperando CPU/IO. No es porcentaje. Comparar contra número de CPUs.</div></div>
+    <div class="gitem"><div class="gterm">CPU Idle (id)</div><div class="gdef">% de tiempo que la CPU está libre. Menor a 10% = saturada. El indicador más confiable.</div></div>
+    <div class="gitem"><div class="gterm">iowait (wa)</div><div class="gdef">Tiempo que la CPU espera el disco. Mayor a 10% = IO Bound.</div></div>
+    <div class="gitem"><div class="gterm">Memory Pressure</div><div class="gdef">Sistema usa swap como RAM por falta de memoria física. Causa lentitud severa.</div></div>
+    <div class="gitem"><div class="gterm">Swap</div><div class="gdef">Espacio en disco como extensión de RAM. Disco es ~100x más lento que RAM.</div></div>
+    <div class="gitem"><div class="gterm">CPU Bound</div><div class="gdef">Procesador es el cuello de botella. id menor a 5%, us mayor a 80%.</div></div>
+    <div class="gitem"><div class="gterm">IO Bound</div><div class="gdef">Disco es el cuello de botella. wa mayor a 10%, b alto en vmstat.</div></div>
+    <div class="gitem"><div class="gterm">LVM</div><div class="gdef">Logical Volume Manager — capa entre discos y filesystem. Permite combinar discos sin reiniciar. PV → VG → LV.</div></div>
+    <div class="gitem"><div class="gterm">XFS</div><div class="gdef">Sistema de archivos alto rendimiento, predeterminado en RHEL. Recomendado para middleware.</div></div>
+    <div class="gitem"><div class="gterm">fstab</div><div class="gdef">/etc/fstab — tabla de filesystems que se montan al boot. Sin esto los LVs no persisten al reiniciar.</div></div>
+    <div class="gitem"><div class="gterm">Silent Install</div><div class="gdef">Instalación sin GUI usando response file (.rsp). Fundamental en servidores sin escritorio.</div></div>
+    <div class="gitem"><div class="gterm">ORACLE_HOME</div><div class="gdef">Directorio de instalación Oracle. Convención: /u01/app/oracle/middleware.</div></div>
+    <div class="gitem"><div class="gterm">LPAR (AIX)</div><div class="gdef">Logical Partition — partición lógica en hardware IBM Power.</div></div>
+    <div class="gitem"><div class="gterm">SRC (AIX)</div><div class="gdef">System Resource Controller — equivalente de systemd en AIX. Comandos: startsrc, stopsrc, lssrc.</div></div>
+    <div class="gitem"><div class="gterm">errpt (AIX)</div><div class="gdef">Error Report — sistema de logs AIX. Equivalente de journalctl. Tipo H = hardware crítico.</div></div>
+    <div class="gitem"><div class="gterm">topas (AIX)</div><div class="gdef">Monitor interactivo de rendimiento IBM. Equivalente de top en Linux.</div></div>
+    <div class="gitem"><div class="gterm">User Data (EC2)</div><div class="gdef">Script que EC2 ejecuta en el primer arranque. Para instalar software sin intervención manual.</div></div>
+    <div class="gitem"><div class="gterm">TMPDIR</div><div class="gdef">Variable de entorno que indica dónde crear temporales. Por defecto /tmp; se puede redirigir a /u01.</div></div>
+  </div>
+</section>
+
+<section class="page" id="page-mnemonic">
+  <div class="page-header"><div class="page-tag">Memoria Técnica</div><div class="page-title">Reglas Mnemotécnicas</div></div>
+  <div class="section">
+    <div class="mnemonic"><div class="mn-title">🧠 Primer paso — "CPUs Antes Que Nada"</div><p>Antes de interpretar cualquier load: <code>nproc</code> (Linux) o <code>lparstat -i</code> (AIX). Sin CPUs el load no significa nada.</p></div>
+    <div class="mnemonic"><div class="mn-title">🧠 3 tipos de falla — "C-M-I"</div><p><span class="key">C</span>PU Bound → id casi en cero (menor a 5%)<br><span class="key">M</span>emory Pressure → swap creciendo + id alto<br><span class="key">I</span>O Bound → wa alto (mayor a 10%) + id alto</p></div>
+    <div class="mnemonic"><div class="mn-title">🧠 Trampa de entrevista</div><p><span class="key">Load alto NO siempre es CPU saturada.</span> Si load alto PERO idle alto → el problema es IO o memoria.</p></div>
+    <div class="mnemonic"><div class="mn-title">🧠 AIX — 4 grandes cambios vs Linux</div><p><span class="key">1.</span> top → topas &nbsp;|&nbsp; <span class="key">2.</span> systemctl → lssrc/startsrc/stopsrc<br><span class="key">3.</span> journalctl → errpt &nbsp;|&nbsp; <span class="key">4.</span> df -h → df -g</p></div>
+    <div class="mnemonic"><div class="mn-title">🧠 LVM — "PVerde VGrande LVive"</div><p><span class="key">PV</span>erde = pvcreate | <span class="key">VG</span>rande = vgcreate | <span class="key">LV</span>ive = lvcreate</p></div>
+    <div class="mnemonic"><div class="mn-title">🧠 SWAP — "FAL-CH-MK-ON"</div><p><span class="key">FAL</span>locate | <span class="key">CH</span>mod 600 | <span class="key">MK</span>swap | swap<span class="key">ON</span></p></div>
+    <div class="mnemonic"><div class="mn-title">🧠 Errores WebLogic — "JDST-Display"</div><p><span class="key">J</span>DK = Oracle JDK 17 | <span class="key">D</span>isco /tmp = export TMPDIR<br><span class="key">S</span>wap mayor a 512MB | <span class="key">T</span>inventory = crear Inventory | <span class="key">Display</span> = -silent</p></div>
+    <div class="mnemonic"><div class="mn-title">🧠 Diagnóstico en 5 — "UP-TOP-FREE-DF-VM"</div><p><span class="key">UP</span>time | <span class="key">TOP</span> | <span class="key">FREE</span> -m | <span class="key">DF</span> -h | <span class="key">VM</span>stat</p></div>
+  </div>
+</section>
+
+<section class="page" id="page-wls-timeline">
+  <div class="page-header"><div class="page-tag">WebLogic / EC2</div><div class="page-title">Timeline — 40 Minutos</div></div>
+  <div class="section">
+    <div class="flow">
+      <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content"><div class="flow-title">🖥️ EC2 <code style="font-size:11px;color:var(--accent2)">5 min</code></div><div class="flow-sub">RHEL 9 · t2.micro · 2 discos · SSH · User Data</div></div></div>
+      <div class="flow-step"><div class="flow-dot">2</div><div class="flow-content"><div class="flow-title">💾 LVM <code style="font-size:11px;color:var(--accent2)">5 min</code></div><div class="flow-sub">pvcreate → vgcreate → lvcreate → mkfs.xfs → mount → fstab</div></div></div>
+      <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content"><div class="flow-title">☕ JDK 17 <code style="font-size:11px;color:var(--accent2)">5 min</code></div><div class="flow-sub">Subir tar.gz · tar -xzf · verificar versión</div></div></div>
+      <div class="flow-step"><div class="flow-dot">4</div><div class="flow-content"><div class="flow-title">📦 Upload WebLogic <code style="font-size:11px;color:var(--accent2)">10 min</code></div><div class="flow-sub">SFTP Termius → /u01/</div></div></div>
+      <div class="flow-step"><div class="flow-dot">5</div><div class="flow-content"><div class="flow-title">⚙️ Silent Install <code style="font-size:11px;color:var(--accent2)">10 min</code></div><div class="flow-sub">swap → TMPDIR → response file → Inventory → java -jar -silent</div></div></div>
+    </div>
+    <table style="margin-top:14px">
+      <tbody><tr><th>Etapa</th><th>Tiempo</th><th>Riesgo</th></tr>
+      <tr><td>EC2</td><td>5 min</td><td>Olvidar discos adicionales</td></tr>
+      <tr><td>LVM</td><td>5 min</td><td>Orden incorrecto PV-VG-LV</td></tr>
+      <tr><td>Java</td><td>5 min</td><td>Usar OpenJDK en vez de Oracle JDK</td></tr>
+      <tr><td>Upload</td><td>10 min</td><td>Velocidad de internet</td></tr>
+      <tr><td>WLS Install</td><td>10 min</td><td>Falta swap o TMPDIR</td></tr>
+      <tr><td><strong>Total</strong></td><td><strong>~40 min</strong></td><td></td></tr>
+    </tbody></table>
+  </div>
+</section>
+
+</main>
+</div>
 <script>
-  // ── NAV ──
-  function showPage(id) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('visible'));
-    document.getElementById('page-' + id).classList.add('visible');
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    event.currentTarget.classList.add('active');
-    document.getElementById('mainContent').scrollTop = 0;
-  }
-
-  // ── SEARCH ──
-  function searchManual(query) {
-    const q = query.trim().toLowerCase();
-    // Remove existing highlights
-    document.querySelectorAll('mark').forEach(m => {
-      m.outerHTML = m.innerHTML;
-    });
-    if (!q || q.length < 2) return;
-
-    // Show all pages temporarily to search
-    const allPages = document.querySelectorAll('.page');
-    let found = [];
-
-    allPages.forEach(page => {
-      const walker = document.createTreeWalker(page, NodeFilter.SHOW_TEXT);
-      let node;
-      while (node = walker.nextNode()) {
-        if (node.nodeValue.toLowerCase().includes(q)) {
-          const parent = node.parentNode;
-          if (parent.tagName !== 'SCRIPT' && parent.tagName !== 'STYLE') {
-            const highlighted = node.nodeValue.replace(
-              new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'),
-              match => `<mark>${match}</mark>`
-            );
-            const span = document.createElement('span');
-            span.innerHTML = highlighted;
-            parent.replaceChild(span, node);
-            found.push(page.id.replace('page-', ''));
-          }
-        }
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('visible'));
+  document.getElementById('page-'+id).classList.add('visible');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(event&&event.currentTarget)event.currentTarget.classList.add('active');
+  document.getElementById('mainContent').scrollTop=0;
+}
+function searchManual(query){
+  document.querySelectorAll('mark').forEach(m=>{m.outerHTML=m.innerHTML});
+  const q=query.trim().toLowerCase();
+  if(!q||q.length<2)return;
+  let found=[];
+  document.querySelectorAll('.page').forEach(page=>{
+    const walker=document.createTreeWalker(page,NodeFilter.SHOW_TEXT);
+    let node;
+    while(node=walker.nextNode()){
+      if(node.nodeValue.toLowerCase().includes(q)){
+        const parent=node.parentNode;
+        if(['SCRIPT','STYLE','MARK'].includes(parent.tagName))continue;
+        const span=document.createElement('span');
+        span.innerHTML=node.nodeValue.replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>`<mark>${m}</mark>`);
+        parent.replaceChild(span,node);
+        found.push(page.id.replace('page-',''));
       }
-    });
-
-    // Navigate to first result
-    if (found.length > 0) {
-      const firstPageId = found[0];
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('visible'));
-      document.getElementById('page-' + firstPageId).classList.add('visible');
-      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-      // Find matching nav item
-      document.querySelectorAll('.nav-item').forEach(n => {
-        if (n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + firstPageId + "'")) {
-          n.classList.add('active');
-        }
-      });
-      const firstMark = document.querySelector('mark');
-      if (firstMark) firstMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
+  });
+  if(found.length>0){
+    const pid=found[0];
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('visible'));
+    document.getElementById('page-'+pid).classList.add('visible');
+    document.querySelectorAll('.nav-item').forEach(n=>{
+      n.classList.remove('active');
+      if(n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+pid+"'"))n.classList.add('active');
+    });
+    const mark=document.querySelector('mark');
+    if(mark)mark.scrollIntoView({behavior:'smooth',block:'center'});
   }
+}
 </script>
 
 
